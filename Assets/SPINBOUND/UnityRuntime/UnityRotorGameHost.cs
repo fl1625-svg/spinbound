@@ -34,6 +34,10 @@ namespace Spinbound.UnityRuntime
 
         private void Awake()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Keep keyboard gameplay independent from DOM focus on the browser checkpoint.
+            WebGLInput.captureAllKeyboardInput = true;
+#endif
             var mode = _assistMode ? RotorMode.Assist : RotorMode.Standard;
             _session = new RunSession(W01_01CourseDefinition.StartFor(mode));
             _runner = new FixedStepRotorRunner(new CollisionWorld(W01_01CourseDefinition.Colliders), _session);
@@ -48,22 +52,47 @@ namespace Spinbound.UnityRuntime
         private void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) SetPaused(!_paused);
+            var webDown = BrowserKeyboard.DownMask;
+            var webPressed = BrowserKeyboard.ConsumePressedMask();
+
+            if ((keyboard != null && keyboard.escapeKey.wasPressedThisFrame) || Has(webPressed, BrowserKeyboard.Escape))
+            {
+                SetPaused(!_paused);
+            }
             if (_paused) return;
 
             var direction = NumericsVector2.Zero;
             var buttonA = false;
             var buttonB = false;
 
-            if (keyboard != null)
+            if ((keyboard != null && (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)) ||
+                Has(webDown, BrowserKeyboard.A) || Has(webDown, BrowserKeyboard.Left))
             {
-                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) direction.X -= 1f;
-                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) direction.X += 1f;
-                if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) direction.Y -= 1f;
-                if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) direction.Y += 1f;
-                buttonA = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
-                buttonB = keyboard.spaceKey.isPressed;
-                if (keyboard.rKey.wasPressedThisFrame) _session.RestartFromCheckpoint();
+                direction.X -= 1f;
+            }
+            if ((keyboard != null && (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)) ||
+                Has(webDown, BrowserKeyboard.D) || Has(webDown, BrowserKeyboard.Right))
+            {
+                direction.X += 1f;
+            }
+            if ((keyboard != null && (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)) ||
+                Has(webDown, BrowserKeyboard.S) || Has(webDown, BrowserKeyboard.Down))
+            {
+                direction.Y -= 1f;
+            }
+            if ((keyboard != null && (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)) ||
+                Has(webDown, BrowserKeyboard.W) || Has(webDown, BrowserKeyboard.Up))
+            {
+                direction.Y += 1f;
+            }
+
+            buttonA = (keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)) ||
+                      Has(webDown, BrowserKeyboard.Shift);
+            buttonB = (keyboard != null && keyboard.spaceKey.isPressed) || Has(webDown, BrowserKeyboard.Space);
+
+            if ((keyboard != null && keyboard.rKey.wasPressedThisFrame) || Has(webPressed, BrowserKeyboard.Restart))
+            {
+                _session.RestartFromCheckpoint();
             }
 
             var input = new PlayerInputState(direction, buttonA, buttonB);
@@ -74,6 +103,8 @@ namespace Spinbound.UnityRuntime
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
         }
+
+        private static bool Has(int mask, int bit) => (mask & bit) != 0;
 
         private void OnDisable()
         {
