@@ -6,6 +6,7 @@
     "Spinbound.Worlds",
     "Spinbound.Presentation",
     "Spinbound.UnityRuntime",
+    "Unity.RenderPipelines.Core.Runtime",
     "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [
