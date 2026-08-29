@@ -66,5 +66,37 @@ namespace Spinbound.Core.Tests.EditMode
             Assert.That(after.Mode, Is.EqualTo(before.Mode));
             Assert.That(after.BumpVelocity, Is.EqualTo(Vector2.UnitX));
         }
+
+        [Test]
+        public void Rotor_ContinuesRotatingWhenPlayerIsIdle()
+        {
+            var state = new RotorState(Vector2.Zero, 180f, -60f, RotationDirection.Clockwise, RotorMode.Standard, Vector2.Zero);
+
+            for (var i = 0; i < RotorTuning.FixedHz; i++)
+            {
+                state = RotorDynamics.IntegrateFree(state, RotorIntent.Idle, RotorTuning.FixedDeltaSeconds);
+            }
+
+            Assert.That(state.Position, Is.EqualTo(Vector2.Zero));
+            Assert.That(state.AngleDeg, Is.EqualTo(120f).Within(0.001f));
+        }
+
+        [TestCase(SpeedTier.Speed1, 2.2f)]
+        [TestCase(SpeedTier.Speed2, 3.3f)]
+        [TestCase(SpeedTier.Speed3, 4.4f)]
+        public void OneSecondMotion_IsDeterministicAtAuthoritativeTickRate(SpeedTier tier, float meters)
+        {
+            var state = new RotorState(Vector2.Zero, 0f, -60f, RotationDirection.Clockwise, RotorMode.Standard, Vector2.Zero);
+            var intent = new RotorIntent(Vector2.UnitX, tier);
+
+            for (var i = 0; i < RotorTuning.FixedHz; i++)
+            {
+                state = RotorDynamics.IntegrateFree(state, intent, RotorTuning.FixedDeltaSeconds);
+            }
+
+            Assert.That(state.Position.X, Is.EqualTo(meters).Within(0.0005f));
+            Assert.That(state.Position.Y, Is.EqualTo(0f).Within(0.0001f));
+            Assert.That(state.AngleDeg, Is.EqualTo(300f).Within(0.001f));
+        }
     }
 }
