@@ -84,7 +84,7 @@ namespace Spinbound.Presentation.Art
         private static Mesh CreateBeveledBox(string name, Vector3 size, float bevel)
         {
             // A production-safe chamfered rectangular prism using 8 corner boxes collapsed into one mesh.
-            var hx=size.x*.5f, hy=size.y*.5f, hz=size.z*.5f; bevel=Mathf.Min(bevel,Mathf.Min(hx,Mathf.Min(hy,hz))*.8f);
+            float hx=size.x*.5f, hy=size.y*.5f, hz=size.z*.5f; bevel=Mathf.Min(bevel,Mathf.Min(hx,Mathf.Min(hy,hz))*.8f);
             var xs=new[]{-hx,-hx+bevel,hx-bevel,hx}; var ys=new[]{-hy,-hy+bevel,hy-bevel,hy}; var zs=new[]{-hz,-hz+bevel,hz-bevel,hz};
             var verts=new List<Vector3>();var normals=new List<Vector3>();var uv=new List<Vector2>();var tris=new List<int>();
             AddFaceGrid(Vector3.up, ys[3], xs, zs, true, verts,normals,uv,tris);
