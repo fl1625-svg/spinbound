@@ -23,12 +23,11 @@ jobs:
           cat bootstrap/spinbound-source.part00 \
               bootstrap/spinbound-source.part01 \
               bootstrap/spinbound-source.part02 \
-              bootstrap/spinbound-source.part03 > /tmp/spinbound-source.b64
-          # part04 was transported in a padded connector envelope; only its first 18000 bytes are source data.
-          head -c 18000 bootstrap/spinbound-source.part04 >> /tmp/spinbound-source.b64
-          cat bootstrap/spinbound-source.part05 >> /tmp/spinbound-source.b64
+              bootstrap/spinbound-source.part03 \
+              bootstrap/spinbound-source.part04 \
+              bootstrap/spinbound-source.part05 > /tmp/spinbound-source.b64
           base64 --decode /tmp/spinbound-source.b64 > /tmp/spinbound-source.tar.gz
-          echo '28f943f0639d155693db7feae6c4380f38d9de083050d14ec9686c5879e74e51  /tmp/spinbound-source.tar.gz' | sha256sum --check --strict
+          echo '5e02a5fca2bc3f6c98f72741d0bcd33c6cd418a80402100909e846045fafe82f  /tmp/spinbound-source.tar.gz' | sha256sum --check --strict
 
       - name: Expand authoritative Unity source
         shell: bash
