@@ -8,7 +8,7 @@ namespace Spinbound.Core.Simulation
 
         public static RotorState IntegrateFree(RotorState state, RotorIntent intent, float dt)
         {
-            var move = RotorMath.NormalizeMove(intent.Move);
+            var move = RotorMath.NormalizeMove(intent.MoveDirection);
             var speed = RotorTuning.SpeedFor(intent.SpeedTier);
             var bump = RotorMath.MoveToward(
                 state.BumpVelocity,
