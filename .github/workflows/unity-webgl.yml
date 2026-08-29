@@ -1,0 +1,173 @@
+name: SPINBOUND Unity WebGL Playtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: Web build flavor
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - release
+  push:
+    branches:
+      - main
+      - 'spinbound-4.0-*'
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+      - 'tools/**'
+      - '.github/workflows/unity-webgl.yml'
+  pull_request:
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+      - 'tools/**'
+      - '.github/workflows/unity-webgl.yml'
+
+concurrency:
+  group: spinbound-webgl-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  source-contract:
+    name: Source contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify CI contract
+        run: python3 tools/verify_ci_webgl.py
+      - name: Verify Task 1 contract
+        run: python3 tools/verify_task1.py
+      - name: Verify W1 reference route
+        run: python3 tools/verify_reference_route.py
+
+  unity-tests:
+    name: Unity EditMode tests
+    needs: source-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+      - name: Run Unity EditMode tests
+        id: tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: auto
+          testMode: EditMode
+          coverageEnabled: false
+          artifactsPath: artifacts/editmode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: SPINBOUND EditMode Tests
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPINBOUND-Unity-Test-Results
+          path: ${{ steps.tests.outputs.artifactsPath }}
+          if-no-files-found: warn
+
+  webgl-build:
+    name: Unity WebGL build
+    needs: unity-tests
+    runs-on: ubuntu-latest
+    outputs:
+      flavor: ${{ steps.flavor.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Resolve build flavor
+        id: flavor
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.flavor }}" == "release" ]]; then
+            echo "name=release" >> "$GITHUB_OUTPUT"
+            echo "custom_parameters=-spinboundRelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=preview" >> "$GITHUB_OUTPUT"
+            echo "custom_parameters=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
+          restore-keys: |
+            Library-WebGL-${{ runner.os }}-
+            Library-${{ runner.os }}-
+      - name: Build authoritative Unity WebGL player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: auto
+          targetPlatform: WebGL
+          buildsPath: build
+          buildName: SPINBOUND
+          buildMethod: Spinbound.EditorTools.CI.CiWebBuild.Build
+          customParameters: ${{ steps.flavor.outputs.custom_parameters }}
+          versioning: Semantic
+      - name: Verify WebGL output
+        shell: bash
+        run: |
+          test -f build/WebGL/SPINBOUND/index.html
+          test -d build/WebGL/SPINBOUND/Build
+          find build/WebGL/SPINBOUND -maxdepth 2 -type f | sort
+      - name: Upload downloadable WebGL playtest
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPINBOUND-WebGL-${{ steps.flavor.outputs.name }}
+          path: build/WebGL/SPINBOUND
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload browser-playable Pages artifact
+        if: steps.flavor.outputs.name == 'preview' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/WebGL/SPINBOUND
+          retention-days: 7
+
+  deploy-pages:
+    name: Publish browser playtest
+    if: needs.webgl-build.outputs.flavor == 'preview' && github.event_name != 'pull_request'
+    needs: webgl-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
