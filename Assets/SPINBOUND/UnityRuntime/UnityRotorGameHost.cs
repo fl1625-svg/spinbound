@@ -35,7 +35,6 @@ namespace Spinbound.UnityRuntime
         private void Awake()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Keep keyboard gameplay independent from DOM focus on the browser checkpoint.
             WebGLInput.captureAllKeyboardInput = true;
 #endif
             var mode = _assistMode ? RotorMode.Assist : RotorMode.Standard;
@@ -52,45 +51,47 @@ namespace Spinbound.UnityRuntime
         private void Update()
         {
             var keyboard = Keyboard.current;
-            var webDown = BrowserKeyboard.DownMask;
-            var webPressed = BrowserKeyboard.ConsumePressedMask();
 
-            if ((keyboard != null && keyboard.escapeKey.wasPressedThisFrame) || Has(webPressed, BrowserKeyboard.Escape))
+            bool escapePressed =
+                (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) ||
+                Input.GetKeyDown(KeyCode.Escape);
+            if (escapePressed)
             {
                 SetPaused(!_paused);
             }
             if (_paused) return;
 
             var direction = NumericsVector2.Zero;
-            var buttonA = false;
-            var buttonB = false;
 
-            if ((keyboard != null && (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)) ||
-                Has(webDown, BrowserKeyboard.A) || Has(webDown, BrowserKeyboard.Left))
-            {
-                direction.X -= 1f;
-            }
-            if ((keyboard != null && (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)) ||
-                Has(webDown, BrowserKeyboard.D) || Has(webDown, BrowserKeyboard.Right))
-            {
-                direction.X += 1f;
-            }
-            if ((keyboard != null && (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)) ||
-                Has(webDown, BrowserKeyboard.S) || Has(webDown, BrowserKeyboard.Down))
-            {
-                direction.Y -= 1f;
-            }
-            if ((keyboard != null && (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)) ||
-                Has(webDown, BrowserKeyboard.W) || Has(webDown, BrowserKeyboard.Up))
-            {
-                direction.Y += 1f;
-            }
+            bool left =
+                (keyboard != null && (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)) ||
+                Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow);
+            bool right =
+                (keyboard != null && (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)) ||
+                Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow);
+            bool down =
+                (keyboard != null && (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)) ||
+                Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
+            bool up =
+                (keyboard != null && (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)) ||
+                Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
 
-            buttonA = (keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)) ||
-                      Has(webDown, BrowserKeyboard.Shift);
-            buttonB = (keyboard != null && keyboard.spaceKey.isPressed) || Has(webDown, BrowserKeyboard.Space);
+            if (left) direction.X -= 1f;
+            if (right) direction.X += 1f;
+            if (down) direction.Y -= 1f;
+            if (up) direction.Y += 1f;
 
-            if ((keyboard != null && keyboard.rKey.wasPressedThisFrame) || Has(webPressed, BrowserKeyboard.Restart))
+            bool buttonA =
+                (keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)) ||
+                Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool buttonB =
+                (keyboard != null && keyboard.spaceKey.isPressed) ||
+                Input.GetKey(KeyCode.Space);
+
+            bool restartPressed =
+                (keyboard != null && keyboard.rKey.wasPressedThisFrame) ||
+                Input.GetKeyDown(KeyCode.R);
+            if (restartPressed)
             {
                 _session.RestartFromCheckpoint();
             }
@@ -103,8 +104,6 @@ namespace Spinbound.UnityRuntime
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
         }
-
-        private static bool Has(int mask, int bit) => (mask & bit) != 0;
 
         private void OnDisable()
         {
