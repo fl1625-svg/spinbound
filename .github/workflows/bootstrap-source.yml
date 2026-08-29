@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           tar -xzf /tmp/spinbound-source.tar.gz
           rm -rf bootstrap
-          rm -f .github/workflows/bootstrap-source.yml
+          rm -f .github/workflows/unity-webgl.yml
           find . -maxdepth 1 -type f -name '*SPINBOUND-3.0.bat' -delete
 
       - name: Commit imported project
