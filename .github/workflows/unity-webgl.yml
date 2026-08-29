@@ -78,7 +78,6 @@ jobs:
           projectPath: .
           unityVersion: auto
           testMode: EditMode
-          coverageEnabled: false
           artifactsPath: artifacts/editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: SPINBOUND EditMode Tests
@@ -87,7 +86,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SPINBOUND-Unity-Test-Results
-          path: ${{ steps.tests.outputs.artifactsPath }}
+          path: artifacts/editmode
           if-no-files-found: warn
 
   webgl-build:
