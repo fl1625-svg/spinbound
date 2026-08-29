@@ -1,0 +1,10 @@
+{
+  "name": "Spinbound.Presentation",
+  "rootNamespace": "Spinbound.Presentation",
+  "references": [
+    "Spinbound.Core",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.UGUI"
+  ],
+  "autoReferenced": true
+}

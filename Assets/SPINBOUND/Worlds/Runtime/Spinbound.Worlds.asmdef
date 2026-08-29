@@ -1,0 +1,14 @@
+{
+  "name": "Spinbound.Worlds",
+  "rootNamespace": "Spinbound.Worlds",
+  "references": ["Spinbound.Core"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Spinbound.Editor",
+  "rootNamespace": "Spinbound.EditorTools",
+  "references": [
+    "Spinbound.Core",
+    "Spinbound.Worlds",
+    "Spinbound.Presentation",
+    "Spinbound.UnityRuntime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

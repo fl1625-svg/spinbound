@@ -1,0 +1,6 @@
+{
+  "name": "Spinbound.Platform",
+  "rootNamespace": "Spinbound.Platform",
+  "references": [],
+  "autoReferenced": true
+}
