@@ -23,7 +23,12 @@ jobs:
           cat bootstrap/spinbound-source.part00 \
               bootstrap/spinbound-source.part01 \
               bootstrap/spinbound-source.part02 \
-              bootstrap/spinbound-source.part03 \
+              bootstrap/spinbound-source.part03a \
+              bootstrap/spinbound-source.part03b \
+              bootstrap/spinbound-source.part03c \
+              bootstrap/spinbound-source.part03d \
+              bootstrap/spinbound-source.part03e \
+              bootstrap/spinbound-source.part03f \
               bootstrap/spinbound-source.part04 \
               bootstrap/spinbound-source.part05 > /tmp/spinbound-source.b64
           base64 --decode /tmp/spinbound-source.b64 > /tmp/spinbound-source.tar.gz
