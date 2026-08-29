@@ -67,6 +67,21 @@ namespace Spinbound.EditorTools.CI
         {
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
+
+#pragma warning disable CS0618
+            // This source-first repository does not yet carry a complete PlayerSettings.asset.
+            // Explicitly enable both backends so WebGL remains playable whether the new Input
+            // System backend or the legacy browser keyboard backend is available at runtime.
+            PlayerSettings.SetPropertyInt("activeInputHandler", 2, BuildTargetGroup.WebGL);
+            int activeInputHandler = PlayerSettings.GetPropertyInt("activeInputHandler", BuildTargetGroup.WebGL);
+#pragma warning restore CS0618
+            if (activeInputHandler != 2)
+            {
+                throw new InvalidOperationException(
+                    $"SPINBOUND CI expected Active Input Handling=Both (2), got {activeInputHandler}.");
+            }
+            Debug.Log("SPINBOUND CI: Active Input Handling=Both (Input System + legacy Input Manager).");
+
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
             PlayerSettings.WebGL.dataCaching = true;
             // GitHub Pages cannot guarantee Unity's required Content-Encoding: br header.
