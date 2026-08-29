@@ -1,4 +1,4 @@
-using System.Numerics;
+using NumericsVector2 = System.Numerics.Vector2;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Spinbound.Core.Collision;
@@ -51,7 +51,7 @@ namespace Spinbound.UnityRuntime
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) SetPaused(!_paused);
             if (_paused) return;
 
-            var direction = Vector2.Zero;
+            var direction = NumericsVector2.Zero;
             var buttonA = false;
             var buttonB = false;
 
