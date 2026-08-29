@@ -64,9 +64,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
-          restore-keys: |
-            Library-${{ runner.os }}-
+          key: Library-v2-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
       - name: Run Unity EditMode tests
         id: tests
         uses: game-ci/unity-test-runner@v4
@@ -115,10 +113,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-WebGL-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
-          restore-keys: |
-            Library-WebGL-${{ runner.os }}-
-            Library-${{ runner.os }}-
+          key: Library-WebGL-v2-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
       - name: Build authoritative Unity WebGL player
         uses: game-ci/unity-builder@v4
         env:
