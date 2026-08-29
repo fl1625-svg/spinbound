@@ -98,5 +98,42 @@ namespace Spinbound.Core.Tests.EditMode
             Assert.That(state.Position.Y, Is.EqualTo(0f).Within(0.0001f));
             Assert.That(state.AngleDeg, Is.EqualTo(300f).Within(0.001f));
         }
+
+        [Test]
+        public void FreeDynamics_RecoversAngularVelocityTowardDefaultDirection()
+        {
+            var collisionAngular = RotorTuning.CollisionAngularMagnitudeDegPerSecond;
+            var state = new RotorState(
+                Vector2.Zero,
+                0f,
+                collisionAngular,
+                RotationDirection.Clockwise,
+                RotorMode.Standard,
+                Vector2.Zero);
+
+            var next = RotorDynamics.IntegrateFree(state, RotorIntent.Idle, RotorTuning.FixedDeltaSeconds);
+            var expected = collisionAngular - RotorTuning.AngularRecoveryDegPerSecondSquared * RotorTuning.FixedDeltaSeconds;
+
+            Assert.That(next.AngularVelocityDegPerSecond, Is.EqualTo(expected).Within(0.0001f));
+        }
+
+        [Test]
+        public void Two120HzBumpDecayTicks_EqualOneReference60HzDecay()
+        {
+            var initial = new Vector2(RotorTuning.CollisionBumpMetersPerSecond, 0f);
+            var state = new RotorState(
+                Vector2.Zero,
+                0f,
+                -RotorTuning.BaseAngularSpeedDegPerSecond,
+                RotationDirection.Clockwise,
+                RotorMode.Standard,
+                initial);
+
+            state = RotorDynamics.IntegrateFree(state, RotorIntent.Idle, RotorTuning.FixedDeltaSeconds);
+            state = RotorDynamics.IntegrateFree(state, RotorIntent.Idle, RotorTuning.FixedDeltaSeconds);
+
+            Assert.That(state.BumpVelocity.X, Is.EqualTo(initial.X * 0.75f).Within(0.0001f));
+            Assert.That(state.BumpVelocity.Y, Is.EqualTo(0f).Within(0.0001f));
+        }
     }
 }
