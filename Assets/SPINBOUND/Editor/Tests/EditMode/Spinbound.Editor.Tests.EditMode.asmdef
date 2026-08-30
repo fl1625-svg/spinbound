@@ -1,0 +1,18 @@
+{
+  "name": "Spinbound.Editor.Tests.EditMode",
+  "rootNamespace": "Spinbound.EditorTools.Tests.EditMode",
+  "references": [
+    "Spinbound.Core",
+    "Spinbound.Worlds",
+    "Spinbound.Presentation",
+    "Spinbound.UnityRuntime",
+    "Spinbound.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}
