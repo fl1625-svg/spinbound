@@ -14,8 +14,9 @@ namespace Spinbound.Presentation.UI
         public void SetTime(float seconds)
         {
             if(_time==null) return;
-            int minutes=Mathf.FloorToInt(Mathf.Max(0f,seconds)/60f);
-            float remaining=Mathf.Max(0f,seconds)-minutes*60f;
+            float safe=Mathf.Max(0f,seconds);
+            int minutes=Mathf.FloorToInt(safe/60f);
+            float remaining=safe-minutes*60f;
             _time.text=$"{minutes:00}:{remaining:00.000}";
         }
 
@@ -49,13 +50,7 @@ namespace Spinbound.Presentation.UI
         private static Text CreateCourseCard(Transform parent)
         {
             var panel=CreateCard(parent,"Course Card",new Vector2(40,-38),new Vector2(468,62),false,new Color(.025f,.055f,.080f,.72f),new Color(.45f,.91f,.34f,1f));
-
-            var tag=CreateText(panel,"World Tag","W1—1",new Vector2(16,9),new Vector2(78,44),TextAnchor.MiddleCenter,20,FontStyle.Bold,new Color(.08f,.17f,.12f,1f));
-            var tagBg=tag.gameObject.AddComponent<Image>();
-            tagBg.color=new Color(.62f,.94f,.38f,.96f);
-            tagBg.raycastTarget=false;
-            tag.transform.SetAsFirstSibling();
-
+            CreateBadge(panel,"World Badge","W1—1",new Vector2(16,9),new Vector2(78,44),new Color(.62f,.94f,.38f,.96f),new Color(.08f,.17f,.12f,1f));
             var title=CreateText(panel,"Course Title","DAISY HIGHLANDS",new Vector2(112,8),new Vector2(334,46),TextAnchor.MiddleLeft,25,FontStyle.Bold,Color.white);
             AddTextOutline(title,new Color(0f,0f,0f,.34f),new Vector2(1,-1));
             return title;
@@ -123,6 +118,28 @@ namespace Spinbound.Presentation.UI
             hi.color=new Color(1f,1f,1f,.16f);
             hi.raycastTarget=false;
             return pr;
+        }
+
+        private static void CreateBadge(RectTransform parent,string name,string value,Vector2 pos,Vector2 size,Color background,Color foreground)
+        {
+            var badge=new GameObject(name);
+            badge.transform.SetParent(parent,false);
+            var rect=badge.AddComponent<RectTransform>();
+            rect.anchorMin=rect.anchorMax=new Vector2(0,1);
+            rect.pivot=new Vector2(0,1);
+            rect.anchoredPosition=new Vector2(pos.x,-pos.y);
+            rect.sizeDelta=size;
+            var image=badge.AddComponent<Image>();
+            image.color=background;
+            image.raycastTarget=false;
+
+            var text=CreateText(rect,"World Tag",value,Vector2.zero,size,TextAnchor.MiddleCenter,20,FontStyle.Bold,foreground);
+            var tr=text.rectTransform;
+            tr.anchorMin=Vector2.zero;
+            tr.anchorMax=Vector2.one;
+            tr.pivot=new Vector2(.5f,.5f);
+            tr.anchoredPosition=Vector2.zero;
+            tr.sizeDelta=Vector2.zero;
         }
 
         private static void ConfigureRect(RectTransform rect,Vector2 pos,Vector2 size,bool right)
