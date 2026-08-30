@@ -13,7 +13,7 @@ namespace Spinbound.EditorTools.CI
 {
     /// <summary>
     /// Single authoritative CI entry point for SPINBOUND Web builds.
-    /// It generates the StageDefinition-driven World 1 scenes used by the project and then builds W01-01.
+    /// It generates and packages the complete StageDefinition-driven World 1 scene catalog.
     /// No browser-only gameplay mirror is permitted.
     /// </summary>
     public static class CiWebBuild
@@ -49,14 +49,14 @@ namespace Spinbound.EditorTools.CI
 
                 BuildWorld1Scenes.BuildAll();
                 AssertWorld1SceneBatch();
-                string generatedScenePath = BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition);
-                RecordDiagnostic($"BuildWorld1Scenes.BuildAll completed. WebGL entry scene: {generatedScenePath}");
+                string[] world1ScenePaths = GetWorld1BuildScenePaths();
+                RecordDiagnostic($"BuildWorld1Scenes.BuildAll completed. WebGL scenes={world1ScenePaths.Length}, entry={world1ScenePaths[0]}");
 
                 Directory.CreateDirectory(buildPath);
 
                 var options = new BuildPlayerOptions
                 {
-                    scenes = new[] { generatedScenePath },
+                    scenes = GetWorld1BuildScenePaths(),
                     locationPathName = buildPath,
                     target = BuildTarget.WebGL,
                     options = BuildOptions.None
@@ -82,6 +82,23 @@ namespace Spinbound.EditorTools.CI
                 RecordDiagnostic($"EXCEPTION {exception.GetType().FullName}: {exception.Message}\n{exception.StackTrace}");
                 throw;
             }
+        }
+
+        private static string[] GetWorld1BuildScenePaths()
+        {
+            var paths = new string[W01ReferenceRoutes.All.Count];
+            for (int i = 0; i < W01ReferenceRoutes.All.Count; i++)
+            {
+                paths[i] = BuildWorld1Scenes.GetScenePath(W01ReferenceRoutes.All[i].Stage);
+            }
+
+            if (paths.Length != World1StageSequence.ExpectedStageCount)
+            {
+                throw new InvalidOperationException(
+                    $"World 1 WebGL scene count mismatch: expected={World1StageSequence.ExpectedStageCount}, actual={paths.Length}");
+            }
+
+            return paths;
         }
 
         private static void ConfigureWebSettings(bool releaseBuild)
