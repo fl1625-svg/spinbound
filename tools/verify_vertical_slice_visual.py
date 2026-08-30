@@ -15,9 +15,25 @@ def require(rel, needles=()):
 require('Assets/SPINBOUND/Art/Shaders/SpinboundStylizedPBR.shader', ['UniversalPipeline', '_BaseColor', '_RimColor', '_MatcapStrength', '_EmissionStrength', 'SampleSH'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundFoliage.shader', ['UniversalPipeline', '_WindStrength', '_Translucency'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundSky.shader', ['Highland Sky', '_HorizonColor', '_ZenithColor'])
+require('Assets/SPINBOUND/Art/Shaders/SpinboundRotorHero.shader', [
+    'SPINBOUND/Rotor Hero', '_CeramicColor', '_MetalColor', '_MechanismColor', '_EnergyColor',
+    '_EmissionStrength', '_SpeedState', 'UniversalPipeline', 'SampleSH'
+])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/SpinboundMaterialLibrary.cs', ['CreateStylized', 'CreateFoliage', 'ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/ProceduralMeshFactory.cs', ['CreateRotorArm', 'CreateRotorHub', 'CreateHighlandIsland', 'CreateRock'])
-require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', ['BuildOrbitalExplorer', 'Energy Halo', 'End Pod Energy Lens', 'ConfigureEmission'])
+require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', [
+    'BuildOrbitalExplorer', 'LODGroup', 'LOD0', 'LOD1', 'LOD2',
+    'Left Endpoint Marker', 'Right Endpoint Marker', 'Core Marker',
+    'SPINBOUND/Rotor Hero', 'Counter Rotation Mechanism', 'End Pod Energy Lens'
+])
+require('Assets/SPINBOUND/Presentation/Runtime/RotorPresenter.cs', [
+    'SetSpeedTier', 'PlayHitRecoil', 'PlayHealRecharge', 'AdvancePresentation',
+    'MaterialPropertyBlock', '_SpeedState', 'Counter Rotation Mechanism'
+])
+require('Assets/SPINBOUND/Editor/Bootstrap/BuildRotorHeroReviewScene.cs', [
+    'BuildRotorHeroReviewScene', 'RotorHeroReview.unity', 'Speed 1', 'Speed 2', 'Speed 3',
+    'Review Camera 78deg', 'Review Camera 45deg', 'Neutral Review Plinth'
+])
 require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsEnvironment.cs', [
     'Build', 'AddPath', 'BuildDaisyCluster', 'AddBackgroundIslands', 'AddCloudSea', 'Grass Crown',
     'new Vector3(-3f,.11f,3.25f)', 'new Vector3(3.25f,.11f,4f)', 'new Vector3(4.8f,.11f,.08f)'
@@ -43,14 +59,12 @@ require('Assets/SPINBOUND/Editor/Bootstrap/StageSceneBuilder.cs', [
     'CreateAuthoritativeObstacleArt', 'MOSS_CAP_', 'StageSemanticBinding', 'ConfigureStageId'
 ])
 
-# The generic production builder is now the only authored preview scene builder.
 for deprecated in (
     'Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01Greybox.cs',
     'Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01VerticalSlice.cs',
 ):
     checks.append((f'deprecated builder removed: {deprecated}', not (root / deprecated).exists()))
 
-# Production preview must stay source-authored, not fall back to primitive greybox objects.
 builder = root / 'Assets/SPINBOUND/Editor/Bootstrap/StageSceneBuilder.cs'
 if builder.exists():
     text = builder.read_text(encoding='utf-8')
