@@ -1,13 +1,13 @@
 #if UNITY_EDITOR
 using System;
 using System.Linq;
-using System.Numerics;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using Spinbound.Core.Simulation;
 using Spinbound.Presentation;
 using Spinbound.Presentation.Art;
+using NumericsVector2 = System.Numerics.Vector2;
 
 namespace Spinbound.EditorTools.Tests.EditMode
 {
@@ -82,12 +82,12 @@ namespace Spinbound.EditorTools.Tests.EditMode
                 presenter.Configure(visual);
 
                 var state = new RotorState(
-                    Vector2.Zero,
+                    NumericsVector2.Zero,
                     32f,
                     -RotorTuning.BaseAngularSpeedDegPerSecond,
                     RotationDirection.Clockwise,
                     RotorMode.Standard,
-                    Vector2.Zero);
+                    NumericsVector2.Zero);
 
                 float halfLength = state.HalfLengthMeters;
                 float radius = state.RadiusMeters;
@@ -101,7 +101,7 @@ namespace Spinbound.EditorTools.Tests.EditMode
 
                 Assert.That(state.HalfLengthMeters, Is.EqualTo(halfLength));
                 Assert.That(state.RadiusMeters, Is.EqualTo(radius));
-                Assert.That(state.Position, Is.EqualTo(Vector2.Zero));
+                Assert.That(state.Position, Is.EqualTo(NumericsVector2.Zero));
                 Assert.That(state.AngleDeg, Is.EqualTo(32f));
             }
             finally
