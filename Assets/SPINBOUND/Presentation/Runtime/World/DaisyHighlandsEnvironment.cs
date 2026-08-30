@@ -9,9 +9,12 @@ namespace Spinbound.Presentation.World
 
         private static readonly Vector3[] RoutePoints=
         {
-            new Vector3(-8f,.11f,0f),new Vector3(-5f,.11f,1.5f),new Vector3(-2.6f,.11f,2.8f),
-            new Vector3(1.7f,.11f,3.4f),new Vector3(4.0f,.11f,4f),new Vector3(6.7f,.11f,2.2f),
-            new Vector3(8.3f,.11f,.7f),new Vector3(10f,.11f,0f)
+            // Follow the authored safe route, but chamfer the 90-degree turns so the path
+            // teaches the intended line without looking like a debug polyline.
+            new Vector3(-8f,.11f,0f),new Vector3(-4.2f,.11f,0f),new Vector3(-3.35f,.11f,.45f),
+            new Vector3(-3f,.11f,1.25f),new Vector3(-3f,.11f,3.25f),new Vector3(-2.35f,.11f,3.9f),
+            new Vector3(3.25f,.11f,4f),new Vector3(3.9f,.11f,3.25f),new Vector3(4f,.11f,.8f),
+            new Vector3(4.8f,.11f,.08f),new Vector3(10f,.11f,0f)
         };
 
         public void Build()
