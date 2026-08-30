@@ -14,8 +14,8 @@ namespace Spinbound.Presentation.Art
             material.SetFloat("_Smoothness", smoothness);
             material.SetFloat("_Metallic", metallic);
             material.SetFloat("_RimPower", 3.2f);
-            material.SetFloat("_RimStrength", 0.22f);
-            material.SetFloat("_MatcapStrength", 0.18f);
+            material.SetFloat("_RimStrength", 0.24f);
+            material.SetFloat("_MatcapStrength", 0.16f);
             return material;
         }
 
@@ -28,6 +28,24 @@ namespace Spinbound.Presentation.Art
             material.SetFloat("_WindStrength", windStrength);
             material.SetFloat("_WindScale", 1.25f);
             material.SetFloat("_Translucency", 0.35f);
+            return material;
+        }
+
+        public static Material ConfigureEmission(Material material, Color color, float strength)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+
+            if (material.HasProperty("_EmissionColor"))
+            {
+                material.SetColor("_EmissionColor", color);
+            }
+            if (material.HasProperty("_EmissionStrength"))
+            {
+                material.SetFloat("_EmissionStrength", Mathf.Max(0f, strength));
+            }
             return material;
         }
     }

@@ -5,6 +5,8 @@ Shader "SPINBOUND/Stylized PBR"
         _BaseColor("Base Color", Color) = (0.5,0.8,0.4,1)
         _ShadowColor("Shadow Tint", Color) = (0.18,0.28,0.22,1)
         _RimColor("Rim Color", Color) = (0.75,0.95,1,1)
+        _EmissionColor("Emission Color", Color) = (0,0,0,1)
+        _EmissionStrength("Emission Strength", Range(0,4)) = 0.0
         _Smoothness("Smoothness", Range(0,1)) = 0.32
         _Metallic("Metallic", Range(0,1)) = 0.0
         _RimPower("Rim Power", Range(1,8)) = 3.0
@@ -30,6 +32,8 @@ Shader "SPINBOUND/Stylized PBR"
             float4 _BaseColor;
             float4 _ShadowColor;
             float4 _RimColor;
+            float4 _EmissionColor;
+            float _EmissionStrength;
             float _Smoothness;
             float _Metallic;
             float _RimPower;
@@ -59,13 +63,17 @@ Shader "SPINBOUND/Stylized PBR"
                 float ndl = saturate(dot(n, mainLight.direction));
                 float wrap = saturate(ndl * 0.72 + 0.28);
                 float3 ramp = lerp(_ShadowColor.rgb, _BaseColor.rgb, smoothstep(0.15, 0.92, wrap));
+                float3 ambient = max(SampleSH(n), float3(0.035, 0.045, 0.055));
+                float shadow = lerp(0.58, 1.0, mainLight.shadowAttenuation);
+                float3 direct = mainLight.color * mainLight.distanceAttenuation * shadow * (0.38 + wrap * 0.72);
                 float3 h = normalize(mainLight.direction + i.viewDirWS);
                 float spec = pow(saturate(dot(n,h)), lerp(24.0, 128.0, _Smoothness));
                 float rim = pow(1.0 - saturate(dot(n, i.viewDirWS)), _RimPower) * _RimStrength;
                 float matcap = pow(saturate(n.y * 0.5 + 0.5), 2.0) * _MatcapStrength;
-                float3 color = ramp * mainLight.color * mainLight.shadowAttenuation;
-                color += spec * lerp(0.08, 0.9, _Metallic);
+                float3 color = ramp * (ambient * 0.78 + direct);
+                color += spec * mainLight.color * lerp(0.08, 0.9, _Metallic);
                 color += _RimColor.rgb * rim + _BaseColor.rgb * matcap;
+                color += _EmissionColor.rgb * _EmissionStrength;
                 return half4(color,1);
             }
             ENDHLSL

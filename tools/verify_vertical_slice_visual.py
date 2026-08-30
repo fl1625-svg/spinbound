@@ -1,5 +1,6 @@
 from pathlib import Path
-import re, sys
+import sys
+
 root=Path(__file__).resolve().parents[1]
 checks=[]
 def require(rel, needles=()):
@@ -10,20 +11,20 @@ def require(rel, needles=()):
         ok &= n in text
     checks.append((rel, ok))
 
-require('Assets/SPINBOUND/Art/Shaders/SpinboundStylizedPBR.shader', ['UniversalPipeline','_BaseColor','_RimColor','_MatcapStrength'])
+require('Assets/SPINBOUND/Art/Shaders/SpinboundStylizedPBR.shader', ['UniversalPipeline','_BaseColor','_RimColor','_MatcapStrength','_EmissionStrength','SampleSH'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundFoliage.shader', ['UniversalPipeline','_WindStrength','_Translucency'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundSky.shader', ['Highland Sky','_HorizonColor','_ZenithColor'])
-require('Assets/SPINBOUND/Presentation/Runtime/Art/SpinboundMaterialLibrary.cs', ['CreateStylized','CreateFoliage'])
+require('Assets/SPINBOUND/Presentation/Runtime/Art/SpinboundMaterialLibrary.cs', ['CreateStylized','CreateFoliage','ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/ProceduralMeshFactory.cs', ['CreateRotorArm','CreateRotorHub','CreateHighlandIsland','CreateRock'])
-require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', ['BuildOrbitalExplorer','ProceduralMeshFactory'])
-require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsEnvironment.cs', ['Build','CreateHighlandIsland','CreateRock'])
-require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsLivingWorld.cs', ['LateUpdate','_windPhase'])
-require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyLandmarkFactory.cs', ['BuildHeartGarden','BuildFinishGate'])
+require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', ['BuildOrbitalExplorer','Energy Halo','End Pod Energy Lens','ConfigureEmission'])
+require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsEnvironment.cs', ['Build','AddPath','BuildDaisyCluster','AddBackgroundIslands','AddCloudSea','Grass Crown'])
+require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsLivingWorld.cs', ['LateUpdate','_windPhase','_baseScales','_baseRotations'])
+require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyLandmarkFactory.cs', ['BuildHeartGarden','BuildFinishGate','Finish Glow','ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Vfx/RotorFxDirector.cs', ['ParticleSystem','SetSpeedTier'])
 require('Assets/SPINBOUND/Presentation/Runtime/UI/AdventureHud.cs', ['Canvas','Hearts','TIME'])
-require('Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01VerticalSlice.cs', ['Build W01-01 AAA Vertical Slice','DaisyHighlandsEnvironment','BuildOrbitalExplorer','Volume'])
+require('Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01VerticalSlice.cs', ['SPINBOUND/4.0/Build W01-01 Production Preview','DaisyHighlandsEnvironment','BuildOrbitalExplorer','MOSS_CAP_','WhiteBalance'])
 
-# Greybox builder must remain but not be used by the vertical-slice builder.
+# Production preview must stay source-authored, not fall back to primitive greybox objects.
 vs=root/'Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01VerticalSlice.cs'
 if vs.exists():
     t=vs.read_text(encoding='utf-8')
