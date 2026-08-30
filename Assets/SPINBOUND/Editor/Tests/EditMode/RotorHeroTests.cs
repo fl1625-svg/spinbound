@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using Spinbound.Core.Simulation;
 using Spinbound.Presentation;
@@ -57,6 +58,75 @@ namespace Spinbound.EditorTools.Tests.EditMode
             finally
             {
                 UnityEngine.Object.DestroyImmediate(parent);
+            }
+        }
+
+        [Test]
+        public void FinalOrbitalExplorer_UsesCommittedModelAndMaterialAssets()
+        {
+            string[] modelPaths =
+            {
+                "Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD0.obj",
+                "Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD1.obj",
+                "Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD2.obj",
+            };
+            foreach (string path in modelPaths)
+                Assert.That(AssetDatabase.LoadAssetAtPath<GameObject>(path), Is.Not.Null, $"Missing committed final Rotor model asset: {path}");
+
+            string[] materialPaths =
+            {
+                "Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroCeramic.mat",
+                "Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMetal.mat",
+                "Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMechanism.mat",
+                "Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroEnergy.mat",
+            };
+            foreach (string path in materialPaths)
+                Assert.That(AssetDatabase.LoadAssetAtPath<Material>(path), Is.Not.Null, $"Missing committed final Rotor material asset: {path}");
+
+            var parent = new GameObject("Rotor Asset Contract");
+            try
+            {
+                Transform visual = RotorVisualFactory.BuildOrbitalExplorer(parent.transform);
+                MeshFilter[] filters = visual.GetComponentsInChildren<MeshFilter>(true);
+                Assert.That(filters.Length, Is.GreaterThan(0));
+                Assert.That(filters.All(filter => filter.sharedMesh != null &&
+                    AssetDatabase.GetAssetPath(filter.sharedMesh).StartsWith("Assets/SPINBOUND/Art/Models/Rotor/", StringComparison.Ordinal)), Is.True,
+                    "Final Hero rendering must come from committed Rotor model assets, not transient procedural meshes.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(parent);
+            }
+        }
+
+        [Test]
+        public void RotorHeroReviewCameras_KeepAllEndpointsInsideFrame()
+        {
+            BuildRotorHeroReviewScene.Build();
+            Camera[] cameras = Resources.FindObjectsOfTypeAll<Camera>()
+                .Where(camera => camera != null && camera.gameObject.scene.IsValid() && camera.gameObject.scene.name == "RotorHeroReview")
+                .ToArray();
+            Transform[] endpoints = Resources.FindObjectsOfTypeAll<Transform>()
+                .Where(transform => transform != null && transform.gameObject.scene.IsValid() && transform.gameObject.scene.name == "RotorHeroReview" &&
+                    (transform.name == "Left Endpoint Marker" || transform.name == "Right Endpoint Marker"))
+                .ToArray();
+
+            Assert.That(cameras.Select(camera => camera.name), Does.Contain("Review Camera 78deg"));
+            Assert.That(cameras.Select(camera => camera.name), Does.Contain("Review Camera 45deg"));
+            Assert.That(endpoints.Length, Is.EqualTo(6));
+
+            foreach (Camera camera in cameras.Where(camera => camera.name.StartsWith("Review Camera", StringComparison.Ordinal)))
+            {
+                bool wasActive = camera.gameObject.activeSelf;
+                camera.gameObject.SetActive(true);
+                foreach (Transform endpoint in endpoints)
+                {
+                    Vector3 viewport = camera.WorldToViewportPoint(endpoint.position);
+                    Assert.That(viewport.z, Is.GreaterThan(0f), $"{endpoint.name} is behind {camera.name}.");
+                    Assert.That(viewport.x, Is.InRange(0.04f, 0.96f), $"{camera.name} clips a Rotor endpoint horizontally.");
+                    Assert.That(viewport.y, Is.InRange(0.08f, 0.92f), $"{camera.name} clips a Rotor endpoint vertically.");
+                }
+                camera.gameObject.SetActive(wasActive);
             }
         }
 
