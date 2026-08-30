@@ -1,3 +1,4 @@
+using System;
 using NumericsVector2 = System.Numerics.Vector2;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -8,7 +9,8 @@ using Spinbound.Platform;
 using Spinbound.Presentation;
 using Spinbound.Presentation.UI;
 using Spinbound.Presentation.Vfx;
-using Spinbound.Worlds.W01.DaisyHighlands;
+using Spinbound.Worlds;
+using Spinbound.Worlds.W01.DaisyMeadow;
 
 namespace Spinbound.UnityRuntime
 {
@@ -18,7 +20,9 @@ namespace Spinbound.UnityRuntime
         [SerializeField] private AdventureHud _hud;
         [SerializeField] private RotorFxDirector _fx;
         [SerializeField] private bool _assistMode;
+        [SerializeField] private string _stageId = W01_01_FirstSpin.Id;
 
+        private StageDefinition _stage;
         private RunSession _session;
         private FixedStepRotorRunner _runner;
         private IPlatformBridge _platform;
@@ -32,14 +36,25 @@ namespace Spinbound.UnityRuntime
             _fx = fx;
         }
 
+        public void ConfigureStageId(string stageId)
+        {
+            if (string.IsNullOrWhiteSpace(stageId))
+                throw new ArgumentException("Stage id is required.", nameof(stageId));
+
+            // Resolve immediately so authored/generated scenes fail fast on invalid IDs.
+            _stage = W01ReferenceRoutes.Get(stageId).Stage;
+            _stageId = stageId;
+        }
+
         private void Awake()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             WebGLInput.captureAllKeyboardInput = true;
 #endif
+            _stage ??= W01ReferenceRoutes.Get(_stageId).Stage;
             var mode = _assistMode ? RotorMode.Assist : RotorMode.Standard;
-            _session = new RunSession(W01_01CourseDefinition.StartFor(mode));
-            _runner = new FixedStepRotorRunner(new CollisionWorld(W01_01CourseDefinition.Colliders), _session);
+            _session = new RunSession(_stage.StartFor(mode));
+            _runner = new FixedStepRotorRunner(new CollisionWorld(_stage.Colliders), _session);
             _platform = new CrazyGamesPlatformBridge();
             _presenter?.Apply(_session.State);
             _hud?.SetHearts(3);
@@ -56,9 +71,7 @@ namespace Spinbound.UnityRuntime
                 (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) ||
                 Input.GetKeyDown(KeyCode.Escape);
             if (escapePressed)
-            {
                 SetPaused(!_paused);
-            }
             if (_paused) return;
 
             var direction = NumericsVector2.Zero;
@@ -92,9 +105,7 @@ namespace Spinbound.UnityRuntime
                 (keyboard != null && keyboard.rKey.wasPressedThisFrame) ||
                 Input.GetKeyDown(KeyCode.R);
             if (restartPressed)
-            {
                 _session.RestartFromCheckpoint();
-            }
 
             var input = new PlayerInputState(direction, buttonA, buttonB);
             var tier = SpeedTierResolver.Resolve(buttonA, buttonB);
