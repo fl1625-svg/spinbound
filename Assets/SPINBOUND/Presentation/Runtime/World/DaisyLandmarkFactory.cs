@@ -14,9 +14,11 @@ namespace Spinbound.Presentation.World
             var stone=SpinboundMaterialLibrary.CreateStylized("Heart Garden Stone",new Color(.73f,.72f,.63f),new Color(.26f,.25f,.22f),new Color(.94f,.96f,.80f),.34f,0f);
             var flower=SpinboundMaterialLibrary.CreateStylized("Heart Garden Bloom",new Color(1f,.48f,.66f),new Color(.38f,.07f,.16f),new Color(1f,.88f,.95f),.48f,0f);
             var core=SpinboundMaterialLibrary.CreateStylized("Heart Garden Core",new Color(1f,.72f,.28f),new Color(.42f,.16f,.025f),new Color(1f,.96f,.62f),.66f,.10f);
+            var leaf=SpinboundMaterialLibrary.CreateStylized("Heart Garden Leaf",new Color(.26f,.68f,.20f),new Color(.08f,.23f,.06f),new Color(.72f,.96f,.36f),.26f,0f);
             SpinboundMaterialLibrary.ConfigureEmission(flower,new Color(1f,.20f,.46f),.48f);
             SpinboundMaterialLibrary.ConfigureEmission(core,new Color(1f,.58f,.12f),.66f);
 
+            // Stone ring reads as a safe pocket from the gameplay camera.
             for(int i=0;i<14;i++)
             {
                 float a=Mathf.PI*2f*i/14f;
@@ -26,22 +28,32 @@ namespace Spinbound.Presentation.World
                 rock.transform.localRotation=Quaternion.Euler(0f,i*31f,0f);
             }
 
+            // A low pedestal separates the recovery landmark from ordinary decoration.
+            Add(root,"Garden Pedestal",ProceduralMeshFactory.CreateBeveledBlock("HeartGardenPedestal",new Vector3(1.28f,.16f,1.28f),.14f),stone,new Vector3(0,.11f,0));
+
+            for(int i=0;i<8;i++)
+            {
+                var blade=Add(root,$"Heart Leaf {i:00}",ProceduralMeshFactory.CreatePetalBlade(.15f,.58f),leaf,new Vector3(0,.22f,0));
+                blade.transform.localRotation=Quaternion.Euler(84f,i*45f+22.5f,0f);
+            }
+
             for(int i=0;i<10;i++)
             {
                 float a=Mathf.PI*2f*i/10f;
-                var petal=Add(root,$"Heart Petal {i:00}",ProceduralMeshFactory.CreatePetalBlade(.13f,.52f),flower,new Vector3(0,.30f,0));
+                var petal=Add(root,$"Heart Petal {i:00}",ProceduralMeshFactory.CreatePetalBlade(.13f,.52f),flower,new Vector3(0,.34f,0));
                 petal.transform.localRotation=Quaternion.Euler(82f,a*Mathf.Rad2Deg,0f);
             }
-            Add(root,"Heart Core",ProceduralMeshFactory.CreateRotorHub(.22f,.10f,24),core,new Vector3(0,.34f,0));
+            Add(root,"Heart Core",ProceduralMeshFactory.CreateRotorHub(.22f,.10f,24),core,new Vector3(0,.38f,0));
+            Add(root,"Heart Beacon",ProceduralMeshFactory.CreateRotorHub(.10f,.22f,20),core,new Vector3(0,.58f,0));
 
             var lightGo=new GameObject("Garden Glow");
             lightGo.transform.SetParent(root,false);
-            lightGo.transform.localPosition=new Vector3(0,.68f,0);
+            lightGo.transform.localPosition=new Vector3(0,.82f,0);
             var light=lightGo.AddComponent<Light>();
             light.type=LightType.Point;
             light.color=new Color(1f,.34f,.58f);
-            light.intensity=1.15f;
-            light.range=3.4f;
+            light.intensity=1.25f;
+            light.range=3.8f;
             light.shadows=LightShadows.None;
             return root;
         }
@@ -55,24 +67,37 @@ namespace Spinbound.Presentation.World
             var wood=SpinboundMaterialLibrary.CreateStylized("Finish Wood",new Color(.44f,.25f,.11f),new Color(.13f,.06f,.025f),new Color(.80f,.52f,.22f),.30f,0f);
             var gold=SpinboundMaterialLibrary.CreateStylized("Finish Gold",new Color(1f,.68f,.14f),new Color(.38f,.15f,.02f),new Color(1f,.95f,.60f),.76f,.28f);
             var petal=SpinboundMaterialLibrary.CreateStylized("Finish Daisy",new Color(.98f,.96f,.86f),new Color(.40f,.31f,.19f),Color.white,.40f,0f);
+            var stone=SpinboundMaterialLibrary.CreateStylized("Finish Plinth Stone",new Color(.67f,.68f,.60f),new Color(.22f,.23f,.20f),new Color(.92f,.94f,.80f),.32f,0f);
+            var ribbon=SpinboundMaterialLibrary.CreateStylized("Finish Ribbon",new Color(.20f,.67f,.98f),new Color(.03f,.18f,.42f),new Color(.72f,.94f,1f),.48f,.06f);
             SpinboundMaterialLibrary.ConfigureEmission(gold,new Color(1f,.48f,.06f),.72f);
+            SpinboundMaterialLibrary.ConfigureEmission(ribbon,new Color(.08f,.46f,1f),.38f);
 
-            Add(root,"Left Pier",ProceduralMeshFactory.CreateBeveledBlock("FinishPier",new Vector3(.38f,2.35f,.42f),.09f),wood,new Vector3(-1.2f,1.05f,0));
-            Add(root,"Right Pier",ProceduralMeshFactory.CreateBeveledBlock("FinishPier",new Vector3(.38f,2.35f,.42f),.09f),wood,new Vector3(1.2f,1.05f,0));
-            Add(root,"Crown",ProceduralMeshFactory.CreateBeveledBlock("FinishCrown",new Vector3(2.85f,.40f,.48f),.09f),wood,new Vector3(0,2.10f,0));
-            Add(root,"Goal Emblem",ProceduralMeshFactory.CreateRotorHub(.37f,.14f,30),gold,new Vector3(0,2.12f,-.27f));
+            Add(root,"Left Plinth",ProceduralMeshFactory.CreateBeveledBlock("FinishPlinth",new Vector3(.76f,.30f,.82f),.12f),stone,new Vector3(-1.2f,.14f,0));
+            Add(root,"Right Plinth",ProceduralMeshFactory.CreateBeveledBlock("FinishPlinth",new Vector3(.76f,.30f,.82f),.12f),stone,new Vector3(1.2f,.14f,0));
+            Add(root,"Left Pier",ProceduralMeshFactory.CreateBeveledBlock("FinishPier",new Vector3(.38f,2.35f,.42f),.09f),wood,new Vector3(-1.2f,1.30f,0));
+            Add(root,"Right Pier",ProceduralMeshFactory.CreateBeveledBlock("FinishPier",new Vector3(.38f,2.35f,.42f),.09f),wood,new Vector3(1.2f,1.30f,0));
+            Add(root,"Crown",ProceduralMeshFactory.CreateBeveledBlock("FinishCrown",new Vector3(2.85f,.40f,.48f),.09f),wood,new Vector3(0,2.36f,0));
 
-            BuildGateDaisy(root,new Vector3(-.82f,2.32f,-.02f),petal,gold,.78f);
-            BuildGateDaisy(root,new Vector3(.82f,2.32f,-.02f),petal,gold,.78f);
+            var leftWing=Add(root,"Crown Ribbon Left",ProceduralMeshFactory.CreateBeveledBlock("FinishRibbon",new Vector3(1.06f,.18f,.12f),.05f),ribbon,new Vector3(-.82f,2.61f,-.08f));
+            leftWing.transform.localRotation=Quaternion.Euler(0f,0f,8f);
+            var rightWing=Add(root,"Crown Ribbon Right",ProceduralMeshFactory.CreateBeveledBlock("FinishRibbon",new Vector3(1.06f,.18f,.12f),.05f),ribbon,new Vector3(.82f,2.61f,-.08f));
+            rightWing.transform.localRotation=Quaternion.Euler(0f,0f,-8f);
+
+            Add(root,"Goal Emblem Back",ProceduralMeshFactory.CreateRotorHub(.48f,.10f,32),wood,new Vector3(0,2.38f,-.25f));
+            Add(root,"Goal Emblem",ProceduralMeshFactory.CreateRotorHub(.37f,.16f,30),gold,new Vector3(0,2.38f,-.32f));
+            Add(root,"Goal Core",ProceduralMeshFactory.CreateRotorHub(.15f,.19f,24),ribbon,new Vector3(0,2.39f,-.36f));
+
+            BuildGateDaisy(root,new Vector3(-.86f,2.56f,-.04f),petal,gold,.78f);
+            BuildGateDaisy(root,new Vector3(.86f,2.56f,-.04f),petal,gold,.78f);
 
             var glowGo=new GameObject("Finish Glow");
             glowGo.transform.SetParent(root,false);
-            glowGo.transform.localPosition=new Vector3(0,2.05f,-.35f);
+            glowGo.transform.localPosition=new Vector3(0,2.30f,-.42f);
             var glow=glowGo.AddComponent<Light>();
             glow.type=LightType.Point;
             glow.color=new Color(1f,.68f,.20f);
-            glow.intensity=1.25f;
-            glow.range=4.2f;
+            glow.intensity=1.45f;
+            glow.range=4.8f;
             glow.shadows=LightShadows.None;
             return root;
         }
