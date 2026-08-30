@@ -48,8 +48,8 @@ namespace Spinbound.Presentation.Art
             var renderers = new List<Renderer>();
             var mechanismRoot = new GameObject("Counter Rotation Mechanism").transform;
             mechanismRoot.SetParent(root, false);
-            renderers.Add(AddMesh("Lower Mechanism Rail", mechanismRoot, ProceduralMeshFactory.CreateRotorArm(1.36f, 0.080f, 0.082f), mechanism, new Vector3(0f, -0.050f, 0f), Quaternion.identity, Vector3.one));
-            renderers.Add(AddMesh("Brushed Metal Spine", mechanismRoot, ProceduralMeshFactory.CreateRotorArm(1.30f, 0.066f, 0.098f), metal, new Vector3(0f, 0.005f, 0f), Quaternion.identity, Vector3.one));
+            renderers.Add(AddMesh("Lower Mechanism Rail", root, ProceduralMeshFactory.CreateRotorArm(1.36f, 0.080f, 0.082f), mechanism, new Vector3(0f, -0.050f, 0f), Quaternion.identity, Vector3.one));
+            renderers.Add(AddMesh("Brushed Metal Spine", root, ProceduralMeshFactory.CreateRotorArm(1.30f, 0.066f, 0.098f), metal, new Vector3(0f, 0.005f, 0f), Quaternion.identity, Vector3.one));
             renderers.Add(AddMesh("Precision Ceramic Shell", root, ProceduralMeshFactory.CreateRotorArm(1.42f, 0.122f, 0.068f), ceramic, new Vector3(0f, 0.045f, 0f), Quaternion.identity, Vector3.one));
             renderers.Add(AddMesh("Central Mechanism", mechanismRoot, ProceduralMeshFactory.CreateRotorHub(0.395f, 0.16f, 40), mechanism, new Vector3(0f, 0.025f, 0f), Quaternion.identity, Vector3.one));
             renderers.Add(AddMesh("Central Metal Bezel", mechanismRoot, ProceduralMeshFactory.CreateRotorHub(0.335f, 0.19f, 40), metal, new Vector3(0f, 0.070f, 0f), Quaternion.identity, Vector3.one));
