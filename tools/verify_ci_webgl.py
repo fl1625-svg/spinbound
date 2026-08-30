@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github' / 'workflows' / 'unity-webgl.yml'
 BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'CI' / 'CiWebBuild.cs'
+PLAYER_SETTINGS = ROOT / 'ProjectSettings' / 'ProjectSettings.asset'
 DOC = ROOT / 'docs' / 'WEBGL-CLOUD-BUILD.md'
 
 failures = []
@@ -21,6 +22,7 @@ def read(path: Path) -> str:
 
 workflow = read(WORKFLOW)
 builder = read(BUILDER)
+player_settings = read(PLAYER_SETTINGS)
 doc = read(DOC)
 project_version = read(ROOT / 'ProjectSettings' / 'ProjectVersion.txt')
 
@@ -41,6 +43,16 @@ require('${{ secrets.UNITY_EMAIL }}' in workflow, 'Unity email must come from Gi
 require('${{ secrets.UNITY_PASSWORD }}' in workflow, 'Unity password must come from GitHub Secrets')
 require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the vertical-slice visual contract before Unity tests')
 
+# Active Input Handling changes Unity's compile-time symbols. It must therefore be persisted
+# before the editor starts, not mutated from a build method after packages are compiled.
+require(PLAYER_SETTINGS.exists(), 'ProjectSettings/ProjectSettings.asset must be version controlled')
+require(re.search(r'^\s*activeInputHandler:\s*2\s*$', player_settings, re.MULTILINE) is not None,
+        'Active Input Handling must be persisted as Both (2) before Unity starts')
+require(re.search(r'^\s*enableNativePlatformBackendsForNewInputSystem:\s*1\s*$', player_settings, re.MULTILINE) is not None,
+        'Unity 6 project settings must enable the native backend for the new Input System')
+require(re.search(r'^\s*disableOldInputManagerSupport:\s*0\s*$', player_settings, re.MULTILINE) is not None,
+        'Both mode must keep legacy Input Manager support enabled')
+
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')
 require('BuildW01_01VerticalSlice.Build();' in builder, 'CI must generate the authoritative vertical-slice scene before building')
@@ -53,6 +65,10 @@ require('spinboundRelease' in builder, 'CI build must support an explicit releas
 require('EditorUserBuildSettings.development = false' in builder, 'Release Web build must not be a development build')
 require('BuildOptions.None' in builder, 'Release Web build must not set Development build flags')
 require('customBuildPath' in builder, 'CI build method must consume GameCI customBuildPath')
+require('AssertPersistedActiveInputHandlingBoth' in builder,
+        'CI must verify the persisted Active Input Handling setting before building')
+require('activeInputHandler.intValue = both' not in builder,
+        'CI must not mutate Active Input Handling after Unity has already compiled editor assemblies')
 
 require(DOC.exists(), 'Missing docs/WEBGL-CLOUD-BUILD.md')
 require('UNITY_LICENSE' in doc and 'UNITY_EMAIL' in doc and 'UNITY_PASSWORD' in doc, 'Cloud build guide must document required Unity secrets')
