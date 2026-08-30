@@ -3,31 +3,37 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Spinbound.Core.Gameplay;
+using Spinbound.Core.Simulation;
+using Spinbound.Meta;
+using Spinbound.UnityRuntime.Save;
 using Spinbound.Worlds;
 using Spinbound.Worlds.W01.DaisyMeadow;
 
 namespace Spinbound.UnityRuntime
 {
     /// <summary>
-    /// Fast browser-playtest shell for the complete authored World 1 route.
-    /// It keeps stage navigation presentation-only: authoritative gameplay remains in Core/Worlds.
+    /// Stage-side results/retry/map flow. World selection itself now lives in the playable 3D diorama map.
     /// </summary>
     public sealed class World1PlaytestFlow : MonoBehaviour
     {
-        [SerializeField] private string _stageId = W01_01_FirstSpin.Id;
+        public const string WorldMapSceneName = "WorldMap_W01";
 
+        [SerializeField] private string _stageId = W01_01_FirstSpin.Id;
+        private readonly LocalProgressStore _store = new();
+        private PlayerProgress _progress;
         private Canvas _canvas;
-        private GameObject _stageSelectPanel;
         private GameObject _resultsPanel;
         private Text _resultsTitle;
         private Text _resultsBody;
         private Text _nextButtonText;
+        private string _nextStageId;
         private bool _completed;
 
         public static World1PlaytestFlow Build(StageDefinition stage)
         {
             if (stage == null) throw new ArgumentNullException(nameof(stage));
-            var root = new GameObject("World 1 Playtest Flow");
+            var root = new GameObject("World 1 Stage Flow");
             var flow = root.AddComponent<World1PlaytestFlow>();
             flow.ConfigureStage(stage);
             return flow;
@@ -41,71 +47,69 @@ namespace Spinbound.UnityRuntime
 
         private void Awake()
         {
+            _progress = _store.Load();
             EnsureUi();
         }
 
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.M))
-            {
-                if (_stageSelectPanel.activeSelf) HideStageSelect();
-                else ShowStageSelect();
-            }
+                LoadWorldMap();
         }
 
-        public void CompleteStage(StageDefinition stage, float elapsedSeconds, int hits)
+        public void CompleteStage(StageDefinition stage, float elapsedSeconds, int hits, RotorMode mode)
         {
             if (stage == null) throw new ArgumentNullException(nameof(stage));
             if (_completed) return;
 
             _completed = true;
             _stageId = stage.Id;
-            EnsureUi();
+            _progress ??= _store.Load();
 
-            bool hasNext = World1StageSequence.TryGetNext(stage.Id, out StageDefinition next);
+            var result = new RunResult(
+                stage.Id,
+                rawTimeSeconds: Mathf.Max(0f, elapsedSeconds),
+                penaltySeconds: 0f,
+                damageCount: Mathf.Max(0, hits),
+                orbitCoreIds: Array.Empty<string>(),
+                mode: mode,
+                practice: false,
+                completed: true);
+
+            StageProgressRecord record = _progress.Merge(result, Array.Empty<string>(), stage.MasterTimeSeconds);
+            _store.Save(_progress);
+
+            _nextStageId = ProgressionRules.GetMainNextStageId(stage.Id);
+            bool hasNext = !string.IsNullOrEmpty(_nextStageId) && ProgressionRules.IsUnlocked(_nextStageId, _progress);
+
+            EnsureUi();
             _resultsTitle.text = stage.Kind == StageKind.Boss ? "WORLD 1 CLEAR" : "COURSE CLEAR";
-            _resultsBody.text = BuildResultsBody(stage, elapsedSeconds, hits, hasNext ? next : null);
-            _nextButtonText.text = hasNext ? "NEXT COURSE" : "REPLAY WORLD 1";
-            _stageSelectPanel.SetActive(false);
+            _resultsBody.text = BuildResultsBody(stage, result, record, hasNext ? W01ReferenceRoutes.Get(_nextStageId).Stage : null);
+            _nextButtonText.text = hasNext ? "NEXT COURSE" : "WORLD MAP";
             _resultsPanel.SetActive(true);
         }
 
         public void LoadNextStage()
         {
-            if (World1StageSequence.TryGetNext(_stageId, out StageDefinition next))
+            if (!string.IsNullOrEmpty(_nextStageId) && ProgressionRules.IsUnlocked(_nextStageId, _progress))
             {
-                LoadStage(next.Id);
+                LoadStage(_nextStageId);
                 return;
             }
-
-            LoadStage(World1StageSequence.Get(0).Id);
+            LoadWorldMap();
         }
 
-        public void RetryStage()
-        {
-            LoadStage(_stageId);
-        }
+        public void RetryStage() => LoadStage(_stageId);
 
-        public void ShowStageSelect()
+        public void LoadWorldMap()
         {
-            EnsureUi();
-            _resultsPanel.SetActive(false);
-            _stageSelectPanel.SetActive(true);
-        }
-
-        public void HideStageSelect()
-        {
-            if (_stageSelectPanel != null)
-                _stageSelectPanel.SetActive(false);
-        }
-
-        public void LoadStageByIndex(int index)
-        {
-            LoadStage(World1StageSequence.Get(index).Id);
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(WorldMapSceneName, LoadSceneMode.Single);
         }
 
         private static void LoadStage(string stageId)
         {
+            if (string.IsNullOrWhiteSpace(stageId)) return;
             Time.timeScale = 1f;
             SceneManager.LoadScene(stageId, LoadSceneMode.Single);
         }
@@ -113,84 +117,64 @@ namespace Spinbound.UnityRuntime
         private void EnsureUi()
         {
             if (_canvas != null) return;
-
             EnsureEventSystem();
 
-            var canvasGo = new GameObject("World 1 Flow Canvas");
+            var canvasGo = new GameObject("World 1 Stage Flow Canvas");
             canvasGo.transform.SetParent(transform, false);
             _canvas = canvasGo.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 120;
-
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = .5f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            CreateStageMenuButton(canvasGo.transform);
-            _stageSelectPanel = BuildStageSelectPanel(canvasGo.transform);
+            Button mapButton = CreateButton(
+                canvasGo.transform,
+                "World Map Button",
+                "WORLD MAP  [M]",
+                new Vector2(-40f, -112f),
+                new Vector2(220f, 48f),
+                LoadWorldMap);
+            mapButton.GetComponent<Image>().color = new Color(.03f, .07f, .10f, .82f);
+
             _resultsPanel = BuildResultsPanel(canvasGo.transform);
-            _stageSelectPanel.SetActive(false);
             _resultsPanel.SetActive(false);
-        }
-
-        private void CreateStageMenuButton(Transform parent)
-        {
-            var button = CreateButton(parent, "Stage Menu Button", "STAGES  [M]", new Vector2(-40f, -112f), new Vector2(190f, 48f), true, ShowStageSelect);
-            button.GetComponent<Image>().color = new Color(.03f, .07f, .10f, .82f);
-        }
-
-        private GameObject BuildStageSelectPanel(Transform parent)
-        {
-            GameObject backdrop = CreateModalPanel(parent, "World 1 Stage Select", new Vector2(900f, 660f));
-            Transform content = backdrop.transform.GetChild(0);
-            CreateText(content, "Stage Select Title", "WORLD 1 — DAISY MEADOW", new Vector2(0f, -38f), new Vector2(760f, 58f), TextAnchor.MiddleCenter, 34, FontStyle.Bold, Color.white);
-            CreateText(content, "Stage Select Caption", "PLAYTEST ROUTE  •  8 AUTHORED COURSES", new Vector2(0f, -96f), new Vector2(720f, 36f), TextAnchor.MiddleCenter, 17, FontStyle.Bold, new Color(.60f, .84f, 1f, 1f));
-
-            for (int i = 0; i < World1StageSequence.Count; i++)
-            {
-                int capturedIndex = i;
-                StageDefinition stage = World1StageSequence.Get(i);
-                int column = i % 2;
-                int row = i / 2;
-                float x = column == 0 ? -215f : 215f;
-                float y = -166f - row * 96f;
-                string label = $"{stage.Id}\n{stage.DisplayName.ToUpperInvariant()}";
-                Button button = CreateCenteredButton(content, $"Stage {stage.Id}", label, new Vector2(x, y), new Vector2(390f, 76f), () => LoadStageByIndex(capturedIndex));
-                if (string.Equals(stage.Id, _stageId, StringComparison.Ordinal))
-                    button.GetComponent<Image>().color = new Color(.19f, .48f, .23f, .96f);
-            }
-
-            CreateCenteredButton(content, "Close Stage Select", "BACK TO COURSE", new Vector2(0f, -566f), new Vector2(280f, 52f), HideStageSelect);
-            return backdrop;
         }
 
         private GameObject BuildResultsPanel(Transform parent)
         {
-            GameObject backdrop = CreateModalPanel(parent, "Course Results", new Vector2(720f, 520f));
+            GameObject backdrop = CreateModalPanel(parent, "Course Results", new Vector2(760f, 540f));
             Transform content = backdrop.transform.GetChild(0);
-            _resultsTitle = CreateText(content, "Results Title", "COURSE CLEAR", new Vector2(0f, -52f), new Vector2(600f, 62f), TextAnchor.MiddleCenter, 40, FontStyle.Bold, new Color(.71f, .98f, .42f, 1f));
-            _resultsBody = CreateText(content, "Results Body", string.Empty, new Vector2(0f, -142f), new Vector2(590f, 154f), TextAnchor.MiddleCenter, 22, FontStyle.Normal, Color.white);
+            _resultsTitle = CreateText(content, "Results Title", "COURSE CLEAR", new Vector2(0f, -52f), new Vector2(640f, 62f), TextAnchor.MiddleCenter, 40, FontStyle.Bold, new Color(.71f, .98f, .42f, 1f));
+            _resultsBody = CreateText(content, "Results Body", string.Empty, new Vector2(0f, -142f), new Vector2(640f, 176f), TextAnchor.MiddleCenter, 21, FontStyle.Normal, Color.white);
 
-            Button next = CreateCenteredButton(content, "Next Course", "NEXT COURSE", new Vector2(0f, -332f), new Vector2(360f, 62f), LoadNextStage);
+            Button next = CreateCenteredButton(content, "Next Course", "NEXT COURSE", new Vector2(0f, -350f), new Vector2(360f, 62f), LoadNextStage);
             _nextButtonText = next.GetComponentInChildren<Text>();
             next.GetComponent<Image>().color = new Color(.22f, .57f, .22f, .98f);
 
-            CreateCenteredButton(content, "Retry Course", "RETRY", new Vector2(-168f, -414f), new Vector2(280f, 54f), RetryStage);
-            CreateCenteredButton(content, "Choose Stage", "STAGE SELECT", new Vector2(168f, -414f), new Vector2(280f, 54f), ShowStageSelect);
+            CreateCenteredButton(content, "Retry Course", "RETRY", new Vector2(-168f, -432f), new Vector2(280f, 54f), RetryStage);
+            CreateCenteredButton(content, "Return To Map", "WORLD MAP", new Vector2(168f, -432f), new Vector2(280f, 54f), LoadWorldMap);
             return backdrop;
         }
 
-        private static string BuildResultsBody(StageDefinition stage, float elapsedSeconds, int hits, StageDefinition next)
+        private static string BuildResultsBody(StageDefinition stage, RunResult result, StageProgressRecord record, StageDefinition next)
         {
-            float safe = Mathf.Max(0f, elapsedSeconds);
-            int minutes = Mathf.FloorToInt(safe / 60f);
-            float seconds = safe - minutes * 60f;
-            string damage = hits == 0 ? "PERFECT — NO DAMAGE" : $"HITS  {hits}";
-            string mastery = stage.MasterTimeSeconds > 0f && safe <= stage.MasterTimeSeconds ? "MASTER TIME" : "CLEAR";
-            string nextLine = next == null ? "BLOOM ENGINE COMPLETE" : $"NEXT  {next.Id}  {next.DisplayName.ToUpperInvariant()}";
-            return $"{stage.Id}  {stage.DisplayName.ToUpperInvariant()}\n\nTIME  {minutes:00}:{seconds:00.000}    {damage}\n{mastery}\n\n{nextLine}";
+            string damage = result.DamageCount == 0 ? "PERFECT — NO DAMAGE" : $"HITS  {result.DamageCount}";
+            string mastery = record.MasteryFlags.HasFlag(StageMasteryFlags.Crown)
+                ? "CROWN"
+                : record.MasteryFlags.HasFlag(StageMasteryFlags.MasterTime) ? "MASTER TIME" : "CLEAR";
+            string best = record.BestValidTimeSeconds > 0f ? FormatTime(record.BestValidTimeSeconds) : "ASSIST CLEAR — NO STANDARD PB";
+            string nextLine = next == null ? "RETURN TO DAISY MEADOW" : $"NEXT  {next.Id}  {next.DisplayName.ToUpperInvariant()}";
+            return $"{stage.Id}  {stage.DisplayName.ToUpperInvariant()}\n\nTIME  {FormatTime(result.DisplayTimeSeconds)}    {damage}\n{mastery}    BEST  {best}\n\n{nextLine}";
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            int minutes = Mathf.FloorToInt(seconds / 60f);
+            float remaining = seconds - minutes * 60f;
+            return $"{minutes:00}:{remaining:00.000}";
         }
 
         private static GameObject CreateModalPanel(Transform parent, string name, Vector2 size)
@@ -220,14 +204,13 @@ namespace Spinbound.UnityRuntime
             return backdrop;
         }
 
-        private static Button CreateButton(Transform parent, string name, string label, Vector2 position, Vector2 size, bool rightAnchored, UnityEngine.Events.UnityAction action)
+        private static Button CreateButton(Transform parent, string name, string label, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var rect = go.AddComponent<RectTransform>();
-            Vector2 anchor = rightAnchored ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
-            rect.anchorMin = rect.anchorMax = anchor;
-            rect.pivot = rightAnchored ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
             var image = go.AddComponent<Image>();
@@ -253,7 +236,7 @@ namespace Spinbound.UnityRuntime
             var button = go.AddComponent<Button>();
             button.targetGraphic = image;
             button.onClick.AddListener(action);
-            CreateStretchText(go.transform, label, label.Contains("\n") ? 16 : 19);
+            CreateStretchText(go.transform, label, 19);
             return button;
         }
 
