@@ -74,8 +74,8 @@ namespace Spinbound.Worlds.W01.DaisyMeadow
             0.7f,
             W01RouteAuthoring.Geometry(
                 Id, -12f, 12f, -6.5f, 6.5f,
-                new CourseCollider("W01-01-garden-mass", new Vector2(-2.6f, -1.2f), new Vector2(-1.0f, 1.2f)),
-                new CourseCollider("W01-01-upper-grove", new Vector2(6.6f, 1.4f), new Vector2(8.4f, 4.8f))),
+                new CourseCollider("W01-01-garden-mass", new Vector2(-3.0f, -1.2f), new Vector2(-2.0f, 1.2f)),
+                new CourseCollider("W01-01-upper-grove", new Vector2(6.6f, 1.8f), new Vector2(8.4f, 4.8f))),
             8.47f);
 
         public static readonly IReadOnlyList<ReferenceAction> Safe = W01RouteAuthoring.Route(
@@ -152,7 +152,7 @@ namespace Spinbound.Worlds.W01.DaisyMeadow
             0.7f,
             W01RouteAuthoring.Geometry(
                 Id, -12f, 12f, -6.5f, 6.5f,
-                new CourseCollider("W01-03-center-hedge", new Vector2(-0.5f, 0.35f), new Vector2(0.5f, 1.45f)),
+                new CourseCollider("W01-03-center-hedge", new Vector2(-0.25f, 0.35f), new Vector2(0.25f, 1.45f)),
                 new CourseCollider("W01-03-east-grove", new Vector2(8.3f, 2.0f), new Vector2(10.0f, 4.8f))),
             10.30f);
 
@@ -241,8 +241,8 @@ namespace Spinbound.Worlds.W01.DaisyMeadow
 
         public static readonly IReadOnlyList<ReferenceAction> Safe = W01RouteAuthoring.Route(
             W01RouteAuthoring.Move(-6f, 0f, SpeedTier.Speed2, 3f),
-            W01RouteAuthoring.Move(-6f, 4f, SpeedTier.Speed1, 3f),
-            W01RouteAuthoring.Move(5.5f, 4f, SpeedTier.Speed2, 5f),
+            W01RouteAuthoring.Move(-6f, 4.25f, SpeedTier.Speed1, 3f),
+            W01RouteAuthoring.Move(5.5f, 4.25f, SpeedTier.Speed2, 5f),
             W01RouteAuthoring.Move(5.5f, -4f, SpeedTier.Speed1, 5f),
             W01RouteAuthoring.Move(8f, -4f, SpeedTier.Speed2, 2f),
             W01RouteAuthoring.Move(8f, 0f, SpeedTier.Speed1, 3f),
@@ -272,7 +272,7 @@ namespace Spinbound.Worlds.W01.DaisyMeadow
                 Id, -13f, 13f, -6.5f, 6.5f,
                 new CourseCollider("W01-06-festival-a", new Vector2(-5.2f, -1.4f), new Vector2(-3.6f, 0.1f)),
                 new CourseCollider("W01-06-festival-b", new Vector2(0f, 0.4f), new Vector2(1.2f, 1.5f)),
-                new CourseCollider("W01-06-festival-c", new Vector2(4.7f, -1.1f), new Vector2(5.5f, 1.1f))),
+                new CourseCollider("W01-06-festival-c", new Vector2(4.7f, -1.1f), new Vector2(5.3f, 1.1f))),
             10.47f);
 
         public static readonly IReadOnlyList<ReferenceAction> Safe = W01RouteAuthoring.Route(
