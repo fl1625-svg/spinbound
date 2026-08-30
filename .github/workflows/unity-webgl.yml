@@ -104,17 +104,29 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.flavor }}" == "release" ]]; then
             echo "name=release" >> "$GITHUB_OUTPUT"
-            echo "custom_parameters=-spinboundRelease" >> "$GITHUB_OUTPUT"
+            echo "custom_parameters=-spinboundRelease -logFile /github/workspace/Logs/UnityDiagnostics/Editor.log" >> "$GITHUB_OUTPUT"
           else
             echo "name=preview" >> "$GITHUB_OUTPUT"
-            echo "custom_parameters=" >> "$GITHUB_OUTPUT"
+            echo "custom_parameters=-logFile /github/workspace/Logs/UnityDiagnostics/Editor.log" >> "$GITHUB_OUTPUT"
           fi
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
           path: Library
           key: Library-WebGL-v2-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
+      - name: Prepare Unity diagnostics
+        shell: bash
+        run: |
+          mkdir -p Logs/UnityDiagnostics
+          {
+            echo "workflow_run=${{ github.run_id }}"
+            echo "commit=${{ github.sha }}"
+            echo "flavor=${{ steps.flavor.outputs.name }}"
+            echo "unity_version=$(cat ProjectSettings/ProjectVersion.txt | tr '\n' ' ')"
+          } > Logs/UnityDiagnostics/ci-context.txt
       - name: Build authoritative Unity WebGL player
+        id: unity_build
+        continue-on-error: true
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -129,16 +141,29 @@ jobs:
           buildMethod: Spinbound.EditorTools.CI.CiWebBuild.Build
           customParameters: ${{ steps.flavor.outputs.custom_parameters }}
           versioning: Semantic
-          collectUnityLogs: true
-          streamUnityLogs: true
+      - name: Collect runner-side Unity diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p Logs/UnityDiagnostics
+          cp -f "$HOME/.config/unity3d/Editor.log" Logs/UnityDiagnostics/Runner-Editor.log 2>/dev/null || true
+          find . -maxdepth 5 -type f \( -iname 'Editor.log' -o -iname '*build*.log' -o -iname '*unity*.log' \) -print | sort > Logs/UnityDiagnostics/discovered-log-files.txt || true
+          echo "builder_outcome=${{ steps.unity_build.outcome }}" >> Logs/UnityDiagnostics/ci-context.txt
+          echo "builder_conclusion=${{ steps.unity_build.conclusion }}" >> Logs/UnityDiagnostics/ci-context.txt
       - name: Upload Unity build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: SPINBOUND-Unity-Build-Diagnostics
           path: Logs/UnityDiagnostics
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
+      - name: Restore Unity build failure
+        if: steps.unity_build.outcome != 'success'
+        shell: bash
+        run: |
+          echo "Unity builder failed; diagnostics were uploaded above."
+          exit 1
       - name: Verify WebGL output
         shell: bash
         run: |
