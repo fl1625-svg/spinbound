@@ -17,11 +17,16 @@ require('Assets/SPINBOUND/Art/Shaders/SpinboundSky.shader', ['Highland Sky','_Ho
 require('Assets/SPINBOUND/Presentation/Runtime/Art/SpinboundMaterialLibrary.cs', ['CreateStylized','CreateFoliage','ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/ProceduralMeshFactory.cs', ['CreateRotorArm','CreateRotorHub','CreateHighlandIsland','CreateRock'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', ['BuildOrbitalExplorer','Energy Halo','End Pod Energy Lens','ConfigureEmission'])
-require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsEnvironment.cs', ['Build','AddPath','BuildDaisyCluster','AddBackgroundIslands','AddCloudSea','Grass Crown'])
+require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsEnvironment.cs', [
+    'Build','AddPath','BuildDaisyCluster','AddBackgroundIslands','AddCloudSea','Grass Crown',
+    'new Vector3(-3f,.11f,3.25f)','new Vector3(3.25f,.11f,4f)','new Vector3(4.8f,.11f,.08f)'
+])
 require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyHighlandsLivingWorld.cs', ['LateUpdate','_windPhase','_baseScales','_baseRotations'])
 require('Assets/SPINBOUND/Presentation/Runtime/World/DaisyLandmarkFactory.cs', ['BuildHeartGarden','BuildFinishGate','Finish Glow','ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Vfx/RotorFxDirector.cs', ['ParticleSystem','SetSpeedTier'])
-require('Assets/SPINBOUND/Presentation/Runtime/UI/AdventureHud.cs', ['Canvas','Hearts','TIME'])
+require('Assets/SPINBOUND/Presentation/Runtime/UI/AdventureHud.cs', [
+    'Canvas','Hearts','Course Card','World Tag','Time Card','Hearts Card','ENERGY','Glass Highlight'
+])
 require('Assets/SPINBOUND/Editor/Bootstrap/BuildW01_01VerticalSlice.cs', ['SPINBOUND/4.0/Build W01-01 Production Preview','DaisyHighlandsEnvironment','BuildOrbitalExplorer','MOSS_CAP_','WhiteBalance'])
 
 # Production preview must stay source-authored, not fall back to primitive greybox objects.

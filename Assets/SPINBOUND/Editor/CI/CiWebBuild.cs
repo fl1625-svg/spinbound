@@ -1,9 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Reflection;
 using UnityEditor;
-using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -25,6 +23,7 @@ namespace Spinbound.EditorTools.CI
         private const string RendererAssetPath = GeneratedRenderingFolder + "/SPINBOUND_Web_Renderer.asset";
         private const string UrpBuiltinRendererTempPath = "Assets/UniversalRenderer.asset";
         private const string DiagnosticPath = "Logs/UnityDiagnostics/CiWebBuild-report.txt";
+        private const string ProjectSettingsPath = "ProjectSettings/ProjectSettings.asset";
 
         public static void Build()
         {
@@ -89,21 +88,13 @@ namespace Spinbound.EditorTools.CI
 
         private static void ConfigureWebSettings(bool releaseBuild)
         {
+            // Active Input Handling changes Unity's compile-time symbols. Mutating it here is
+            // too late: editor/package assemblies have already compiled. Assert that the
+            // version-controlled project setting was applied before this editor session began.
+            AssertPersistedActiveInputHandlingBoth();
+
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
-
-            // Unity 6's obsolete named PlayerSettings API can return a native sentinel for
-            // activeInputHandler in source-first projects. The Input System package itself
-            // resolves the effective PlayerSettings object through BuildProfile and edits the
-            // serialized property directly, so CI mirrors that Unity-supported workaround.
-            int activeInputHandler = SetActiveInputHandlingBoth();
-            if (activeInputHandler != 2)
-            {
-                throw new InvalidOperationException(
-                    $"SPINBOUND CI expected Active Input Handling=Both (2), got {activeInputHandler}.");
-            }
-            Debug.Log("SPINBOUND CI: Active Input Handling=Both (Input System + legacy Input Manager).");
-
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
             PlayerSettings.WebGL.dataCaching = true;
             // GitHub Pages cannot guarantee Unity's required Content-Encoding: br header.
@@ -114,72 +105,27 @@ namespace Spinbound.EditorTools.CI
             EditorUserBuildSettings.development = false;
         }
 
-        private static int SetActiveInputHandlingBoth()
+        private static void AssertPersistedActiveInputHandlingBoth()
         {
-            const string propertyName = "activeInputHandler";
-            const int both = 2;
-
-            Type buildProfileType = typeof(BuildProfile);
-            FieldInfo globalPlayerSettingsField = buildProfileType.GetField(
-                "s_GlobalPlayerSettings",
-                BindingFlags.Static | BindingFlags.NonPublic);
-            if (globalPlayerSettingsField == null)
+#if !ENABLE_INPUT_SYSTEM || !ENABLE_LEGACY_INPUT_MANAGER
+            throw new InvalidOperationException(
+                "SPINBOUND CI requires Unity to start with Active Input Handling=Both so editor and player compile with identical input symbols.");
+#else
+            if (!File.Exists(ProjectSettingsPath))
             {
                 throw new InvalidOperationException(
-                    "SPINBOUND CI could not resolve Unity 6 global PlayerSettings through BuildProfile.");
+                    $"SPINBOUND CI requires a version-controlled {ProjectSettingsPath} before Unity starts.");
             }
 
-            PlayerSettings effectivePlayerSettings =
-                globalPlayerSettingsField.GetValue(null) as PlayerSettings;
-
-            BuildProfile activeBuildProfile = BuildProfile.GetActiveBuildProfile();
-            if (activeBuildProfile != null)
-            {
-                FieldInfo profilePlayerSettingsField = buildProfileType.GetField(
-                    "m_PlayerSettings",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-                if (profilePlayerSettingsField == null)
-                {
-                    throw new InvalidOperationException(
-                        "SPINBOUND CI could not resolve the active Unity 6 build-profile PlayerSettings override.");
-                }
-
-                PlayerSettings profilePlayerSettings =
-                    profilePlayerSettingsField.GetValue(activeBuildProfile) as PlayerSettings;
-                if (profilePlayerSettings != null)
-                {
-                    effectivePlayerSettings = profilePlayerSettings;
-                }
-            }
-
-            if (effectivePlayerSettings == null)
+            string settings = File.ReadAllText(ProjectSettingsPath);
+            if (!settings.Contains("activeInputHandler: 2"))
             {
                 throw new InvalidOperationException(
-                    "SPINBOUND CI could not resolve an effective Unity 6 PlayerSettings object.");
+                    "SPINBOUND CI expected persisted Active Input Handling=Both (activeInputHandler: 2).");
             }
 
-            var serializedPlayerSettings = new SerializedObject(effectivePlayerSettings);
-            SerializedProperty activeInputHandler = serializedPlayerSettings.FindProperty(propertyName);
-            if (activeInputHandler == null)
-            {
-                throw new InvalidOperationException(
-                    $"SPINBOUND CI could not find serialized PlayerSettings property '{propertyName}'.");
-            }
-
-            activeInputHandler.intValue = both;
-            serializedPlayerSettings.ApplyModifiedProperties();
-
-            // Verify against a fresh SerializedObject so the assertion checks Unity's stored
-            // value rather than only the local SerializedProperty cache.
-            var verificationSettings = new SerializedObject(effectivePlayerSettings);
-            SerializedProperty verificationProperty = verificationSettings.FindProperty(propertyName);
-            if (verificationProperty == null)
-            {
-                throw new InvalidOperationException(
-                    $"SPINBOUND CI could not re-read serialized PlayerSettings property '{propertyName}'.");
-            }
-
-            return verificationProperty.intValue;
+            Debug.Log("SPINBOUND CI: editor compiled with Input System + legacy Input Manager from persisted project settings.");
+#endif
         }
 
         private static void EnsureUrpPipeline()
@@ -187,9 +133,8 @@ namespace Spinbound.EditorTools.CI
             Directory.CreateDirectory(GeneratedRenderingFolder);
             AssetDatabase.Refresh();
 
-            // This repository is intentionally source-first and does not yet carry the full
-            // Unity ProjectSettings set. Build a deterministic URP configuration explicitly
-            // so CI cannot silently fall back to the Built-in Render Pipeline.
+            // Build a deterministic URP configuration explicitly so CI cannot silently fall
+            // back to the Built-in Render Pipeline even when rendering assets are regenerated.
             DeleteAssetIfPresent(PipelineAssetPath);
             DeleteAssetIfPresent(RendererAssetPath);
             DeleteAssetIfPresent(UrpBuiltinRendererTempPath);

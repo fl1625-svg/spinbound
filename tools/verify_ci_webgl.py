@@ -27,9 +27,6 @@ doc = read(DOC)
 project_version = read(ROOT / 'ProjectSettings' / 'ProjectVersion.txt')
 
 require('6000.3.18f1' in project_version, 'Project must remain pinned to Unity 6000.3.18f1')
-require(PLAYER_SETTINGS.exists(), 'ProjectSettings.asset must be committed so input defines are stable before Unity starts')
-require(re.search(r'^\s*activeInputHandler:\s*2\s*$', player_settings, re.MULTILINE) is not None,
-        'ProjectSettings.asset must persist Active Input Handling=Both (2) before editor compilation')
 require(WORKFLOW.exists(), 'Missing .github/workflows/unity-webgl.yml')
 require('workflow_dispatch:' in workflow, 'Workflow must support manual browser-build dispatch')
 require('game-ci/unity-test-runner@v4' in workflow, 'Workflow must run Unity tests with GameCI v4')
@@ -46,12 +43,21 @@ require('${{ secrets.UNITY_EMAIL }}' in workflow, 'Unity email must come from Gi
 require('${{ secrets.UNITY_PASSWORD }}' in workflow, 'Unity password must come from GitHub Secrets')
 require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the vertical-slice visual contract before Unity tests')
 
+# Active Input Handling changes Unity's compile-time symbols. It must therefore be persisted
+# before the editor starts, not mutated from a build method after packages are compiled.
+require(PLAYER_SETTINGS.exists(), 'ProjectSettings/ProjectSettings.asset must be version controlled')
+require(re.search(r'^\s*activeInputHandler:\s*2\s*$', player_settings, re.MULTILINE) is not None,
+        'Active Input Handling must be persisted as Both (2) before Unity starts')
+require(re.search(r'^\s*enableNativePlatformBackendsForNewInputSystem:\s*1\s*$', player_settings, re.MULTILINE) is not None,
+        'Unity 6 project settings must enable the native backend for the new Input System')
+require(re.search(r'^\s*disableOldInputManagerSupport:\s*0\s*$', player_settings, re.MULTILINE) is not None,
+        'Both mode must keep legacy Input Manager support enabled')
+
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')
 require('BuildW01_01VerticalSlice.Build();' in builder, 'CI must generate the authoritative vertical-slice scene before building')
 require('BuildPipeline.BuildPlayer' in builder, 'CI must call Unity BuildPipeline.BuildPlayer')
 require('BuildTarget.WebGL' in builder, 'CI build target must be WebGL')
-require('SetActiveInputHandlingBoth()' in builder, 'CI must verify the effective Unity 6 input setting before building')
 require('WebGLCompressionFormat.Brotli' in builder, 'Release Web build must use Brotli')
 require('PlayerSettings.WebGL.dataCaching = true' in builder, 'Release Web build must enable data caching')
 require('PlayerSettings.WebGL.decompressionFallback = !releaseBuild' in builder, 'Preview must enable fallback while release disables it')
@@ -59,6 +65,10 @@ require('spinboundRelease' in builder, 'CI build must support an explicit releas
 require('EditorUserBuildSettings.development = false' in builder, 'Release Web build must not be a development build')
 require('BuildOptions.None' in builder, 'Release Web build must not set Development build flags')
 require('customBuildPath' in builder, 'CI build method must consume GameCI customBuildPath')
+require('AssertPersistedActiveInputHandlingBoth' in builder,
+        'CI must verify the persisted Active Input Handling setting before building')
+require('activeInputHandler.intValue = both' not in builder,
+        'CI must not mutate Active Input Handling after Unity has already compiled editor assemblies')
 
 require(DOC.exists(), 'Missing docs/WEBGL-CLOUD-BUILD.md')
 require('UNITY_LICENSE' in doc and 'UNITY_EMAIL' in doc and 'UNITY_PASSWORD' in doc, 'Cloud build guide must document required Unity secrets')
