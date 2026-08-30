@@ -66,7 +66,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-v2-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
+          key: Library-v3-${{ runner.os }}-${{ hashFiles('ProjectSettings/**', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
       - name: Run Unity EditMode tests
         id: tests
         uses: game-ci/unity-test-runner@v4
@@ -115,7 +115,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Library
-          key: Library-WebGL-v2-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
+          key: Library-WebGL-v3-${{ runner.os }}-${{ hashFiles('ProjectSettings/**', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
       - name: Prepare Unity diagnostics
         shell: bash
         run: |
