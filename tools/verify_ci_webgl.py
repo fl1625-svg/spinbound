@@ -39,6 +39,7 @@ require('pages: write' in workflow and 'id-token: write' in workflow, 'Pages dep
 require('${{ secrets.UNITY_LICENSE }}' in workflow, 'Unity license must come from GitHub Secrets')
 require('${{ secrets.UNITY_EMAIL }}' in workflow, 'Unity email must come from GitHub Secrets')
 require('${{ secrets.UNITY_PASSWORD }}' in workflow, 'Unity password must come from GitHub Secrets')
+require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the vertical-slice visual contract before Unity tests')
 
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')

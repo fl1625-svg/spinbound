@@ -50,6 +50,8 @@ jobs:
         run: python3 tools/verify_task1.py
       - name: Verify W1 reference route
         run: python3 tools/verify_reference_route.py
+      - name: Verify vertical slice visual contract
+        run: python3 tools/verify_vertical_slice_visual.py
 
   unity-tests:
     name: Unity EditMode tests
