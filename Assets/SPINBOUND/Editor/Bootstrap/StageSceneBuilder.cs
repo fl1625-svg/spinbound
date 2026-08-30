@@ -51,11 +51,13 @@ namespace Spinbound.EditorTools
             Camera camera = CreateCamera(presenter.transform);
             CreatePostProcessing(definition, profile, camera);
             AdventureHud hud = AdventureHud.Build();
+            hud.SetCourse(definition.Id, definition.DisplayName);
+            World1PlaytestFlow flow = World1PlaytestFlow.Build(definition);
 
             var systems = new GameObject("Runtime Systems");
             systems.AddComponent<WebRenderQualityController>();
             var host = systems.AddComponent<UnityRotorGameHost>();
-            host.Configure(presenter, hud, fx);
+            host.Configure(presenter, hud, fx, flow);
             host.ConfigureStageId(definition.Id);
 
             AssetDatabase.SaveAssets();
