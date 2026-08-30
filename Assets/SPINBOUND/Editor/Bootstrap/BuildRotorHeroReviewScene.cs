@@ -1,8 +1,11 @@
 #if UNITY_EDITOR
+using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using Spinbound.Core.Simulation;
 using Spinbound.Presentation;
@@ -13,6 +16,7 @@ namespace Spinbound.EditorTools
     public static class BuildRotorHeroReviewScene
     {
         public const string ScenePath = "Assets/SPINBOUND/Scenes/Reviews/RotorHeroReview.unity";
+        public const string CaptureFolder = "Logs/UnityDiagnostics/RotorHero";
 
         [MenuItem("SPINBOUND/Build/Rotor Hero Review Scene")]
         public static void Build()
@@ -20,8 +24,8 @@ namespace Spinbound.EditorTools
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             scene.name = "RotorHeroReview";
 
-            Camera camera78 = CreateCamera("Review Camera 78deg", new Vector3(0f, 8.7f, -6.2f), new Vector3(55f, 0f, 0f), true);
-            Camera camera45 = CreateCamera("Review Camera 45deg", new Vector3(0f, 5.1f, -8.5f), new Vector3(32f, 0f, 0f), false);
+            Camera camera78 = CreateCamera("Review Camera 78deg", new Vector3(0f, 10f, -2.2f), new Vector3(78f, 0f, 0f), true);
+            Camera camera45 = CreateCamera("Review Camera 45deg", new Vector3(0f, 6.5f, -6.5f), new Vector3(45f, 0f, 0f), false);
             camera45.gameObject.SetActive(false);
 
             CreateLighting();
@@ -37,6 +41,52 @@ namespace Spinbound.EditorTools
             Selection.activeGameObject = camera78.gameObject;
         }
 
+        public static void CaptureForCi()
+        {
+            Build();
+            string folder = Path.GetFullPath(CaptureFolder);
+            Directory.CreateDirectory(folder);
+            CaptureCamera("Review Camera 78deg", Path.Combine(folder, "OrbitalExplorer-78deg.png"));
+            CaptureCamera("Review Camera 45deg", Path.Combine(folder, "OrbitalExplorer-45deg.png"));
+        }
+
+        private static void CaptureCamera(string cameraName, string outputPath)
+        {
+            Camera camera = Resources.FindObjectsOfTypeAll<Camera>()
+                .FirstOrDefault(candidate => candidate != null && candidate.name == cameraName &&
+                    candidate.gameObject.scene.IsValid() && candidate.gameObject.scene == SceneManager.GetActiveScene());
+            if (camera == null)
+                throw new InvalidOperationException($"Rotor Hero review camera not found: {cameraName}");
+
+            bool wasActive = camera.gameObject.activeSelf;
+            camera.gameObject.SetActive(true);
+            const int width = 1600;
+            const int height = 900;
+            var target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+            {
+                name = cameraName + " Capture",
+                antiAliasing = 4
+            };
+            target.Create();
+
+            var request = new RenderPipeline.StandardRequest { destination = target };
+            RenderPipeline.SubmitRenderRequest(camera, request);
+
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = target;
+            var image = new Texture2D(width, height, TextureFormat.RGB24, false, false);
+            image.ReadPixels(new Rect(0f, 0f, width, height), 0, 0, false);
+            image.Apply(false, false);
+            File.WriteAllBytes(outputPath, image.EncodeToPNG());
+
+            RenderTexture.active = previous;
+            target.Release();
+            UnityEngine.Object.DestroyImmediate(image);
+            UnityEngine.Object.DestroyImmediate(target);
+            camera.gameObject.SetActive(wasActive);
+            Debug.Log($"SPINBOUND Hero review capture: {outputPath}");
+        }
+
         private static void CreateHeroStation(string label, Vector3 position, SpeedTier tier)
         {
             var root = new GameObject(label);
@@ -46,6 +96,7 @@ namespace Spinbound.EditorTools
             presenter.Configure(visual);
             presenter.SetSpeedTier(tier);
             presenter.AdvancePresentation(tier == SpeedTier.Speed3 ? 0.22f : 0.10f);
+            visual.GetComponent<LODGroup>()?.ForceLOD(0);
 
             var labelObject = new GameObject(label + " Label");
             labelObject.transform.position = position + new Vector3(0f, 0.05f, -1.35f);
@@ -85,7 +136,7 @@ namespace Spinbound.EditorTools
             rim.range = 9f;
             rim.shadows = LightShadows.None;
 
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.15f, 0.18f, 0.23f);
             RenderSettings.fog = false;
         }
