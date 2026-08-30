@@ -8,6 +8,11 @@ WORKFLOW = ROOT / '.github' / 'workflows' / 'unity-webgl.yml'
 BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'CI' / 'CiWebBuild.cs'
 PLAYER_SETTINGS = ROOT / 'ProjectSettings' / 'ProjectSettings.asset'
 DOC = ROOT / 'docs' / 'WEBGL-CLOUD-BUILD.md'
+WORLD1_SEQUENCE = ROOT / 'Assets' / 'SPINBOUND' / 'Worlds' / 'Runtime' / 'W01' / 'DaisyMeadow' / 'World1StageSequence.cs'
+WORLD1_FLOW = ROOT / 'Assets' / 'SPINBOUND' / 'UnityRuntime' / 'World1PlaytestFlow.cs'
+HOST = ROOT / 'Assets' / 'SPINBOUND' / 'UnityRuntime' / 'UnityRotorGameHost.cs'
+HUD = ROOT / 'Assets' / 'SPINBOUND' / 'Presentation' / 'Runtime' / 'UI' / 'AdventureHud.cs'
+SCENE_BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'Bootstrap' / 'StageSceneBuilder.cs'
 
 failures = []
 
@@ -25,6 +30,11 @@ builder = read(BUILDER)
 player_settings = read(PLAYER_SETTINGS)
 doc = read(DOC)
 project_version = read(ROOT / 'ProjectSettings' / 'ProjectVersion.txt')
+sequence = read(WORLD1_SEQUENCE)
+flow = read(WORLD1_FLOW)
+host = read(HOST)
+hud = read(HUD)
+scene_builder = read(SCENE_BUILDER)
 
 require('6000.3.18f1' in project_version, 'Project must remain pinned to Unity 6000.3.18f1')
 require(WORKFLOW.exists(), 'Missing .github/workflows/unity-webgl.yml')
@@ -61,8 +71,16 @@ require('AssertWorld1SceneBatch();' in builder,
         'CI must verify the generated World 1 scene batch before the browser player build')
 require('AssetDatabase.AssetPathToGUID' in builder,
         'CI must verify generated World 1 scenes have unique persistent Unity GUIDs')
-require('BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition)' in builder,
-        'CI must select W01-01 from the generic World 1 scene catalog as the WebGL entry scene')
+require('GetWorld1BuildScenePaths()' in builder,
+        'CI must derive the WebGL scene list from the complete World 1 route catalog')
+require('W01ReferenceRoutes.All.Count' in builder,
+        'CI WebGL build must size its scene list from every World 1 route contract')
+require('BuildWorld1Scenes.GetScenePath(W01ReferenceRoutes.All[i].Stage)' in builder,
+        'CI WebGL build must include every generated World 1 scene, not only W01-01')
+require('scenes = GetWorld1BuildScenePaths()' in builder,
+        'BuildPlayerOptions must receive the complete World 1 scene list')
+require('BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition)' not in builder,
+        'CI must not hard-code W01-01 as the only WebGL scene')
 require('BuildW01_01VerticalSlice' not in builder,
         'CI must not depend on the deleted W01-01-specific vertical-slice builder')
 require('W01_01CourseDefinition' not in builder,
@@ -80,6 +98,24 @@ require('AssertPersistedActiveInputHandlingBoth' in builder,
         'CI must verify the persisted Active Input Handling setting before building')
 require('activeInputHandler.intValue = both' not in builder,
         'CI must not mutate Active Input Handling after Unity has already compiled editor assemblies')
+
+# The browser playtest must be a complete World 1 flow rather than an isolated one-stage scene.
+require(WORLD1_SEQUENCE.exists(), 'Missing World1StageSequence runtime catalog')
+require('public const int ExpectedStageCount = 8' in sequence,
+        'World1StageSequence must declare the eight-stage World 1 playtest contract')
+require('TryGetNext' in sequence and 'W01ReferenceRoutes.All' in sequence,
+        'World1StageSequence must derive next-stage navigation from the authored route catalog')
+require(WORLD1_FLOW.exists(), 'Missing World1PlaytestFlow runtime scene navigation')
+require('ShowStageSelect' in flow and 'CompleteStage' in flow and 'LoadNextStage' in flow,
+        'World1PlaytestFlow must expose stage select, results completion and next-stage navigation')
+require('SceneManager.LoadScene' in flow,
+        'World1PlaytestFlow must load authored World 1 scenes through Unity SceneManager')
+require('World1PlaytestFlow' in host and 'FinishCenter' in host and 'FinishRadius' in host,
+        'UnityRotorGameHost must detect the authored finish zone and report completion to World1PlaytestFlow')
+require('SetCourse' in hud,
+        'AdventureHud must show the current authored stage rather than a hard-coded W01-01 label')
+require('World1PlaytestFlow' in scene_builder and 'host.Configure' in scene_builder,
+        'StageSceneBuilder must wire World1PlaytestFlow into every generated World 1 scene')
 
 require(DOC.exists(), 'Missing docs/WEBGL-CLOUD-BUILD.md')
 require('UNITY_LICENSE' in doc and 'UNITY_EMAIL' in doc and 'UNITY_PASSWORD' in doc, 'Cloud build guide must document required Unity secrets')
