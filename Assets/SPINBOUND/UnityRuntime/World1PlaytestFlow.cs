@@ -138,15 +138,15 @@ namespace Spinbound.UnityRuntime
         private void CreateStageMenuButton(Transform parent)
         {
             var button = CreateButton(parent, "Stage Menu Button", "STAGES  [M]", new Vector2(-40f, -112f), new Vector2(190f, 48f), true, ShowStageSelect);
-            var image = button.GetComponent<Image>();
-            image.color = new Color(.03f, .07f, .10f, .82f);
+            button.GetComponent<Image>().color = new Color(.03f, .07f, .10f, .82f);
         }
 
         private GameObject BuildStageSelectPanel(Transform parent)
         {
-            var panel = CreateModalPanel(parent, "World 1 Stage Select", new Vector2(900f, 660f));
-            CreateText(panel.transform, "Stage Select Title", "WORLD 1 — DAISY MEADOW", new Vector2(0f, -38f), new Vector2(760f, 58f), TextAnchor.MiddleCenter, 34, FontStyle.Bold, Color.white);
-            CreateText(panel.transform, "Stage Select Caption", "PLAYTEST ROUTE  •  8 AUTHORED COURSES", new Vector2(0f, -96f), new Vector2(720f, 36f), TextAnchor.MiddleCenter, 17, FontStyle.Bold, new Color(.60f, .84f, 1f, 1f));
+            GameObject backdrop = CreateModalPanel(parent, "World 1 Stage Select", new Vector2(900f, 660f));
+            Transform content = backdrop.transform.GetChild(0);
+            CreateText(content, "Stage Select Title", "WORLD 1 — DAISY MEADOW", new Vector2(0f, -38f), new Vector2(760f, 58f), TextAnchor.MiddleCenter, 34, FontStyle.Bold, Color.white);
+            CreateText(content, "Stage Select Caption", "PLAYTEST ROUTE  •  8 AUTHORED COURSES", new Vector2(0f, -96f), new Vector2(720f, 36f), TextAnchor.MiddleCenter, 17, FontStyle.Bold, new Color(.60f, .84f, 1f, 1f));
 
             for (int i = 0; i < World1StageSequence.Count; i++)
             {
@@ -157,28 +157,29 @@ namespace Spinbound.UnityRuntime
                 float x = column == 0 ? -215f : 215f;
                 float y = -166f - row * 96f;
                 string label = $"{stage.Id}\n{stage.DisplayName.ToUpperInvariant()}";
-                Button button = CreateCenteredButton(panel.transform, $"Stage {stage.Id}", label, new Vector2(x, y), new Vector2(390f, 76f), () => LoadStageByIndex(capturedIndex));
+                Button button = CreateCenteredButton(content, $"Stage {stage.Id}", label, new Vector2(x, y), new Vector2(390f, 76f), () => LoadStageByIndex(capturedIndex));
                 if (string.Equals(stage.Id, _stageId, StringComparison.Ordinal))
                     button.GetComponent<Image>().color = new Color(.19f, .48f, .23f, .96f);
             }
 
-            CreateCenteredButton(panel.transform, "Close Stage Select", "BACK TO COURSE", new Vector2(0f, -566f), new Vector2(280f, 52f), HideStageSelect);
-            return panel;
+            CreateCenteredButton(content, "Close Stage Select", "BACK TO COURSE", new Vector2(0f, -566f), new Vector2(280f, 52f), HideStageSelect);
+            return backdrop;
         }
 
         private GameObject BuildResultsPanel(Transform parent)
         {
-            var panel = CreateModalPanel(parent, "Course Results", new Vector2(720f, 520f));
-            _resultsTitle = CreateText(panel.transform, "Results Title", "COURSE CLEAR", new Vector2(0f, -52f), new Vector2(600f, 62f), TextAnchor.MiddleCenter, 40, FontStyle.Bold, new Color(.71f, .98f, .42f, 1f));
-            _resultsBody = CreateText(panel.transform, "Results Body", string.Empty, new Vector2(0f, -142f), new Vector2(590f, 154f), TextAnchor.MiddleCenter, 22, FontStyle.Normal, Color.white);
+            GameObject backdrop = CreateModalPanel(parent, "Course Results", new Vector2(720f, 520f));
+            Transform content = backdrop.transform.GetChild(0);
+            _resultsTitle = CreateText(content, "Results Title", "COURSE CLEAR", new Vector2(0f, -52f), new Vector2(600f, 62f), TextAnchor.MiddleCenter, 40, FontStyle.Bold, new Color(.71f, .98f, .42f, 1f));
+            _resultsBody = CreateText(content, "Results Body", string.Empty, new Vector2(0f, -142f), new Vector2(590f, 154f), TextAnchor.MiddleCenter, 22, FontStyle.Normal, Color.white);
 
-            Button next = CreateCenteredButton(panel.transform, "Next Course", "NEXT COURSE", new Vector2(0f, -332f), new Vector2(360f, 62f), LoadNextStage);
+            Button next = CreateCenteredButton(content, "Next Course", "NEXT COURSE", new Vector2(0f, -332f), new Vector2(360f, 62f), LoadNextStage);
             _nextButtonText = next.GetComponentInChildren<Text>();
             next.GetComponent<Image>().color = new Color(.22f, .57f, .22f, .98f);
 
-            CreateCenteredButton(panel.transform, "Retry Course", "RETRY", new Vector2(-168f, -414f), new Vector2(280f, 54f), RetryStage);
-            CreateCenteredButton(panel.transform, "Choose Stage", "STAGE SELECT", new Vector2(168f, -414f), new Vector2(280f, 54f), ShowStageSelect);
-            return panel;
+            CreateCenteredButton(content, "Retry Course", "RETRY", new Vector2(-168f, -414f), new Vector2(280f, 54f), RetryStage);
+            CreateCenteredButton(content, "Choose Stage", "STAGE SELECT", new Vector2(168f, -414f), new Vector2(280f, 54f), ShowStageSelect);
+            return backdrop;
         }
 
         private static string BuildResultsBody(StageDefinition stage, float elapsedSeconds, int hits, StageDefinition next)
