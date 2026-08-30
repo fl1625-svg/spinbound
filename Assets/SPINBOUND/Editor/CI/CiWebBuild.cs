@@ -91,11 +91,13 @@ namespace Spinbound.EditorTools.CI
             PlayerSettings.runInBackground = true;
 
 #pragma warning disable CS0618
-            // This source-first repository does not yet carry a complete PlayerSettings.asset.
-            // Explicitly enable both backends so WebGL remains playable whether the new Input
-            // System backend or the legacy browser keyboard backend is available at runtime.
-            PlayerSettings.SetPropertyInt("activeInputHandler", 2, BuildTargetGroup.WebGL);
-            int activeInputHandler = PlayerSettings.GetPropertyInt("activeInputHandler", BuildTargetGroup.WebGL);
+            // Active Input Handling is a global PlayerSettings value, not a WebGL-specific
+            // per-target override. Using BuildTargetGroup.WebGL against a source-first project
+            // without ProjectSettings.asset can return an invalid native sentinel in Unity 6.
+            // Apply/read the global value explicitly so the generated Web player has both the
+            // new Input System and legacy browser keyboard backend enabled.
+            PlayerSettings.SetPropertyInt("activeInputHandler", 2, BuildTargetGroup.Unknown);
+            int activeInputHandler = PlayerSettings.GetPropertyInt("activeInputHandler", BuildTargetGroup.Unknown);
 #pragma warning restore CS0618
             if (activeInputHandler != 2)
             {
