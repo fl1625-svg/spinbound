@@ -12,6 +12,21 @@ def require(rel, needles=()):
         ok &= needle in text
     checks.append((rel, ok))
 
+
+def require_obj_groups(rel):
+    p = root / rel
+    ok = p.exists()
+    if not ok:
+        checks.append((rel, False))
+        checks.append((f'{rel} preserves Unity-readable OBJ groups', False))
+        return
+
+    lines = p.read_text(encoding='utf-8').splitlines()
+    objects = [line[2:].strip() for line in lines if line.startswith('o ')]
+    groups = [line[2:].strip() for line in lines if line.startswith('g ')]
+    checks.append((rel, True))
+    checks.append((f'{rel} preserves Unity-readable OBJ groups', bool(objects) and objects == groups))
+
 require('Assets/SPINBOUND/Art/Shaders/SpinboundStylizedPBR.shader', ['UniversalPipeline', '_BaseColor', '_RimColor', '_MatcapStrength', '_EmissionStrength', 'SampleSH'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundFoliage.shader', ['UniversalPipeline', '_WindStrength', '_Translucency'])
 require('Assets/SPINBOUND/Art/Shaders/SpinboundSky.shader', ['Highland Sky', '_HorizonColor', '_ZenithColor'])
@@ -19,9 +34,9 @@ require('Assets/SPINBOUND/Art/Shaders/SpinboundRotorHero.shader', [
     'SPINBOUND/Rotor Hero', '_CeramicColor', '_MetalColor', '_MechanismColor', '_EnergyColor',
     '_EmissionStrength', '_SpeedState', 'UniversalPipeline', 'SampleSH'
 ])
-require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD0.obj')
-require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD1.obj')
-require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD2.obj')
+require_obj_groups('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD0.obj')
+require_obj_groups('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD1.obj')
+require_obj_groups('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD2.obj')
 require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroCeramic.mat')
 require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMetal.mat')
 require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMechanism.mat')
