@@ -19,12 +19,21 @@ require('Assets/SPINBOUND/Art/Shaders/SpinboundRotorHero.shader', [
     'SPINBOUND/Rotor Hero', '_CeramicColor', '_MetalColor', '_MechanismColor', '_EnergyColor',
     '_EmissionStrength', '_SpeedState', 'UniversalPipeline', 'SampleSH'
 ])
+require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD0.obj')
+require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD1.obj')
+require('Assets/SPINBOUND/Art/Models/Rotor/OrbitalExplorer_LOD2.obj')
+require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroCeramic.mat')
+require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMetal.mat')
+require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroMechanism.mat')
+require('Assets/SPINBOUND/Art/Materials/Rotor/RotorHeroEnergy.mat')
 require('Assets/SPINBOUND/Presentation/Runtime/Art/SpinboundMaterialLibrary.cs', ['CreateStylized', 'CreateFoliage', 'ConfigureEmission'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/ProceduralMeshFactory.cs', ['CreateRotorArm', 'CreateRotorHub', 'CreateHighlandIsland', 'CreateRock'])
 require('Assets/SPINBOUND/Presentation/Runtime/Art/RotorVisualFactory.cs', [
     'BuildOrbitalExplorer', 'LODGroup', 'LOD0', 'LOD1', 'LOD2',
     'Left Endpoint Marker', 'Right Endpoint Marker', 'Core Marker',
-    'SPINBOUND/Rotor Hero', 'Counter Rotation Mechanism', 'End Pod Energy Lens'
+    'ModelFolder', 'MaterialFolder', 'AssetDatabase.LoadAssetAtPath',
+    'OrbitalExplorer_LOD{lod}.obj', 'RotorHeroCeramic.mat', 'RotorHeroMetal.mat',
+    'RotorHeroMechanism.mat', 'RotorHeroEnergy.mat', 'CounterRotationCore', 'Counter Rotation Mechanism'
 ])
 require('Assets/SPINBOUND/Presentation/Runtime/RotorPresenter.cs', [
     'SetSpeedTier', 'PlayHitRecoil', 'PlayHealRecharge', 'AdvancePresentation',
