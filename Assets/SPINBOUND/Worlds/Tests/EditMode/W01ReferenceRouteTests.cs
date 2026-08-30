@@ -15,7 +15,7 @@ namespace Spinbound.Worlds.Tests.EditMode
         {
             IReadOnlyList<W01StageRouteContract> stages = W01ReferenceRoutes.All;
 
-            Assert.That(stages, Has.Count.EqualTo(8));
+            Assert.That(stages.Count, Is.EqualTo(8));
             Assert.That(CountKind(stages, StageKind.Normal), Is.EqualTo(6));
             Assert.That(CountKind(stages, StageKind.Trial), Is.EqualTo(1));
             Assert.That(CountKind(stages, StageKind.Boss), Is.EqualTo(1));
