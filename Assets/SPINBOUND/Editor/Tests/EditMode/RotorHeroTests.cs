@@ -61,6 +61,44 @@ namespace Spinbound.EditorTools.Tests.EditMode
         }
 
         [Test]
+        public void RotorHub_HasClosedTopAndBottomFaces()
+        {
+            Mesh hub = ProceduralMeshFactory.CreateRotorHub(0.34f, 0.18f, 24);
+            try
+            {
+                Assert.That(CountTrianglesFacing(hub, Vector3.up), Is.GreaterThan(0),
+                    "Hero hubs need a real top cap so the 78-degree gameplay camera does not see an empty tube.");
+                Assert.That(CountTrianglesFacing(hub, Vector3.down), Is.GreaterThan(0),
+                    "Hero hubs need a real bottom cap for a closed production silhouette.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(hub);
+            }
+        }
+
+        [Test]
+        public void CounterRotationMechanism_IsConfinedToCentralCore()
+        {
+            var parent = new GameObject("Rotor Counter Rotation Contract");
+            try
+            {
+                Transform visual = RotorVisualFactory.BuildOrbitalExplorer(parent.transform);
+                Transform counterRotation = FindRecursive(visual, "Counter Rotation Mechanism");
+                Assert.That(counterRotation, Is.Not.Null);
+
+                MeshFilter[] rotatingMeshes = counterRotation.GetComponentsInChildren<MeshFilter>(true);
+                Assert.That(rotatingMeshes.Length, Is.GreaterThan(0));
+                Assert.That(rotatingMeshes.All(filter => filter.sharedMesh != null && filter.sharedMesh.bounds.extents.x <= 0.55f), Is.True,
+                    "Counter-rotation must stay inside the central mechanism; full-length rails would form an X against the gameplay silhouette.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(parent);
+            }
+        }
+
+        [Test]
         public void RotorPresenter_ExposesPresentationOnlySpeedHitHealState()
         {
             Type presenter = typeof(RotorPresenter);
@@ -116,6 +154,22 @@ namespace Spinbound.EditorTools.Tests.EditMode
             Type builder = Type.GetType("Spinbound.EditorTools.BuildRotorHeroReviewScene, Spinbound.Editor", false);
             Assert.That(builder, Is.Not.Null, "Task 3 requires a neutral hero review scene builder.");
             Assert.That(builder.GetMethod("Build", BindingFlags.Public | BindingFlags.Static), Is.Not.Null);
+        }
+
+        private static int CountTrianglesFacing(Mesh mesh, Vector3 direction)
+        {
+            Vector3[] vertices = mesh.vertices;
+            int[] triangles = mesh.triangles;
+            int count = 0;
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                Vector3 a = vertices[triangles[i]];
+                Vector3 b = vertices[triangles[i + 1]];
+                Vector3 c = vertices[triangles[i + 2]];
+                Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+                if (Vector3.Dot(normal, direction) > 0.98f) count++;
+            }
+            return count;
         }
 
         private static Transform FindRecursive(Transform root, string name)
