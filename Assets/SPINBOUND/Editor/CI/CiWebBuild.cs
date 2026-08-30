@@ -22,6 +22,7 @@ namespace Spinbound.EditorTools.CI
         private const string PipelineAssetPath = GeneratedRenderingFolder + "/SPINBOUND_Web_URP.asset";
         private const string RendererAssetPath = GeneratedRenderingFolder + "/SPINBOUND_Web_Renderer.asset";
         private const string UrpBuiltinRendererTempPath = "Assets/UniversalRenderer.asset";
+        private const string DiagnosticPath = "Logs/UnityDiagnostics/CiWebBuild-report.txt";
 
         public static void Build()
         {
@@ -29,38 +30,59 @@ namespace Spinbound.EditorTools.CI
             string customBuildPath = GetArgumentValue("-customBuildPath") ?? DefaultBuildPath;
             string buildPath = Path.GetFullPath(customBuildPath);
 
-            Debug.Log($"SPINBOUND CI: flavor={(releaseBuild ? "release" : "preview")}, output={buildPath}");
+            RecordDiagnostic($"BEGIN flavor={(releaseBuild ? "release" : "preview")}, output={buildPath}, cwd={Directory.GetCurrentDirectory()}");
 
-            ConfigureWebSettings(releaseBuild);
-            EnsureUrpPipeline();
-            ValidateRequiredShaders();
-            BuildW01_01VerticalSlice.Build();
-
-            if (!File.Exists(GeneratedScenePath))
+            try
             {
-                throw new InvalidOperationException($"Generated scene was not created: {GeneratedScenePath}");
+                Debug.Log($"SPINBOUND CI: flavor={(releaseBuild ? "release" : "preview")}, output={buildPath}");
+
+                ConfigureWebSettings(releaseBuild);
+                RecordDiagnostic("ConfigureWebSettings completed.");
+
+                EnsureUrpPipeline();
+                RecordDiagnostic("EnsureUrpPipeline completed.");
+
+                ValidateRequiredShaders();
+                RecordDiagnostic("ValidateRequiredShaders completed.");
+
+                BuildW01_01VerticalSlice.Build();
+                RecordDiagnostic("BuildW01_01VerticalSlice completed.");
+
+                if (!File.Exists(GeneratedScenePath))
+                {
+                    throw new InvalidOperationException($"Generated scene was not created: {GeneratedScenePath}");
+                }
+
+                Directory.CreateDirectory(buildPath);
+
+                var options = new BuildPlayerOptions
+                {
+                    scenes = new[] { GeneratedScenePath },
+                    locationPathName = buildPath,
+                    target = BuildTarget.WebGL,
+                    options = BuildOptions.None
+                };
+
+                RecordDiagnostic("BuildPipeline.BuildPlayer starting.");
+                BuildReport report = BuildPipeline.BuildPlayer(options);
+                RecordBuildReport(report);
+
+                BuildSummary summary = report.summary;
+                if (summary.result != BuildResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"SPINBOUND WebGL build failed: result={summary.result}, errors={summary.totalErrors}, warnings={summary.totalWarnings}");
+                }
+
+                RecordDiagnostic($"SUCCESS bytes={summary.totalSize}, duration={summary.totalTime}, output={buildPath}");
+                Debug.Log(
+                    $"SPINBOUND WebGL build succeeded: bytes={summary.totalSize}, duration={summary.totalTime}, output={buildPath}");
             }
-
-            Directory.CreateDirectory(buildPath);
-
-            var options = new BuildPlayerOptions
+            catch (Exception exception)
             {
-                scenes = new[] { GeneratedScenePath },
-                locationPathName = buildPath,
-                target = BuildTarget.WebGL,
-                options = BuildOptions.None
-            };
-
-            BuildReport report = BuildPipeline.BuildPlayer(options);
-            BuildSummary summary = report.summary;
-            if (summary.result != BuildResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"SPINBOUND WebGL build failed: result={summary.result}, errors={summary.totalErrors}, warnings={summary.totalWarnings}");
+                RecordDiagnostic($"EXCEPTION {exception.GetType().FullName}: {exception.Message}\n{exception.StackTrace}");
+                throw;
             }
-
-            Debug.Log(
-                $"SPINBOUND WebGL build succeeded: bytes={summary.totalSize}, duration={summary.totalTime}, output={buildPath}");
         }
 
         private static void ConfigureWebSettings(bool releaseBuild)
@@ -175,6 +197,53 @@ namespace Spinbound.EditorTools.CI
                 {
                     throw new InvalidOperationException($"SPINBOUND CI required shader is unsupported for this build: {shaderName}");
                 }
+            }
+        }
+
+        private static void RecordBuildReport(BuildReport report)
+        {
+            if (report == null)
+            {
+                RecordDiagnostic("BuildPipeline.BuildPlayer returned a null BuildReport.");
+                return;
+            }
+
+            BuildSummary summary = report.summary;
+            RecordDiagnostic(
+                $"BUILD SUMMARY result={summary.result}, errors={summary.totalErrors}, warnings={summary.totalWarnings}, bytes={summary.totalSize}, duration={summary.totalTime}");
+
+            foreach (BuildStep step in report.steps)
+            {
+                foreach (BuildStepMessage message in step.messages)
+                {
+                    if (message.type == LogType.Error ||
+                        message.type == LogType.Exception ||
+                        message.type == LogType.Assert)
+                    {
+                        RecordDiagnostic($"BUILD MESSAGE step={step.name}, type={message.type}: {message.content}");
+                    }
+                }
+            }
+        }
+
+        private static void RecordDiagnostic(string message)
+        {
+            try
+            {
+                string fullPath = Path.GetFullPath(DiagnosticPath);
+                string directory = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.AppendAllText(
+                    fullPath,
+                    $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
+            }
+            catch (Exception diagnosticException)
+            {
+                Debug.LogWarning($"SPINBOUND CI could not persist diagnostics: {diagnosticException.Message}");
             }
         }
 
