@@ -19,6 +19,7 @@ namespace Spinbound.UnityRuntime
         [SerializeField] private RotorPresenter _presenter;
         [SerializeField] private AdventureHud _hud;
         [SerializeField] private RotorFxDirector _fx;
+        [SerializeField] private World1PlaytestFlow _flow;
         [SerializeField] private bool _assistMode;
         [SerializeField] private string _stageId = W01_01_FirstSpin.Id;
 
@@ -27,14 +28,16 @@ namespace Spinbound.UnityRuntime
         private FixedStepRotorRunner _runner;
         private IPlatformBridge _platform;
         private bool _paused;
+        private bool _completed;
         private bool _gameplayReported;
         private int _presentedHitCount;
 
-        public void Configure(RotorPresenter presenter, AdventureHud hud = null, RotorFxDirector fx = null)
+        public void Configure(RotorPresenter presenter, AdventureHud hud = null, RotorFxDirector fx = null, World1PlaytestFlow flow = null)
         {
             _presenter = presenter;
             _hud = hud;
             _fx = fx;
+            _flow = flow;
         }
 
         public void ConfigureStageId(string stageId)
@@ -57,6 +60,7 @@ namespace Spinbound.UnityRuntime
             _runner = new FixedStepRotorRunner(new CollisionWorld(_stage.Colliders), _session);
             _platform = new CrazyGamesPlatformBridge();
             _presenter?.Apply(_session.State);
+            _hud?.SetCourse(_stage.Id, _stage.DisplayName);
             _hud?.SetHearts(3);
             _hud?.SetTime(0f);
             _presentedHitCount = _session.Hits;
@@ -73,7 +77,7 @@ namespace Spinbound.UnityRuntime
                 Input.GetKeyDown(KeyCode.Escape);
             if (escapePressed)
                 SetPaused(!_paused);
-            if (_paused) return;
+            if (_paused || _completed) return;
 
             var direction = NumericsVector2.Zero;
 
@@ -121,6 +125,25 @@ namespace Spinbound.UnityRuntime
             _fx?.SetSpeedTier(tier);
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
+
+            if (HasReachedFinish())
+                CompleteStage();
+        }
+
+        private bool HasReachedFinish()
+        {
+            float dx = _session.State.Position.X - _stage.FinishCenter.X;
+            float dy = _session.State.Position.Y - _stage.FinishCenter.Y;
+            float radius = _stage.FinishRadius;
+            return dx * dx + dy * dy <= radius * radius;
+        }
+
+        private void CompleteStage()
+        {
+            if (_completed) return;
+            _completed = true;
+            ReportGameplayStop();
+            _flow?.CompleteStage(_stage, _session.ElapsedSeconds, _session.Hits);
         }
 
         private void OnDisable()
@@ -134,14 +157,14 @@ namespace Spinbound.UnityRuntime
 
         private void SetPaused(bool paused)
         {
-            if (_paused == paused) return;
+            if (_paused == paused || _completed) return;
             _paused = paused;
             if (_paused) ReportGameplayStop(); else ReportGameplayStart();
         }
 
         private void ReportGameplayStart()
         {
-            if (_gameplayReported) return;
+            if (_gameplayReported || _completed) return;
             _platform?.GameplayStart();
             _gameplayReported = true;
         }
