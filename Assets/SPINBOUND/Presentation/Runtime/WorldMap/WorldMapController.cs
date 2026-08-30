@@ -26,18 +26,24 @@ namespace Spinbound.Presentation.WorldMap
 
         private void Awake()
         {
-            _graph = WorldMapGraph.CreateWorld1();
-            _progress = new PlayerProgress();
+            EnsureInitialized();
             BuildMap();
             SelectInitialStage(instant: true);
         }
 
         public void ConfigureProgress(PlayerProgress progress)
         {
+            EnsureInitialized();
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
             if (!_built) BuildMap();
             SelectInitialStage(instant: true);
             RefreshViews();
+        }
+
+        private void EnsureInitialized()
+        {
+            _graph ??= WorldMapGraph.CreateWorld1();
+            _progress ??= new PlayerProgress();
         }
 
         private void Update()
@@ -122,7 +128,7 @@ namespace Spinbound.Presentation.WorldMap
 
         private void RefreshViews()
         {
-            if (!_built || _progress == null) return;
+            if (!_built || _progress == null || string.IsNullOrEmpty(_currentStageId)) return;
 
             foreach (WorldMapNode node in _graph.Nodes)
             {
@@ -155,6 +161,7 @@ namespace Spinbound.Presentation.WorldMap
         private void BuildMap()
         {
             if (_built) return;
+            EnsureInitialized();
             _built = true;
 
             Transform worldRoot = new GameObject("Daisy Meadow Diorama").transform;
