@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github' / 'workflows' / 'unity-webgl.yml'
 BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'CI' / 'CiWebBuild.cs'
+PLAYER_SETTINGS = ROOT / 'ProjectSettings' / 'ProjectSettings.asset'
 DOC = ROOT / 'docs' / 'WEBGL-CLOUD-BUILD.md'
 
 failures = []
@@ -21,10 +22,14 @@ def read(path: Path) -> str:
 
 workflow = read(WORKFLOW)
 builder = read(BUILDER)
+player_settings = read(PLAYER_SETTINGS)
 doc = read(DOC)
 project_version = read(ROOT / 'ProjectSettings' / 'ProjectVersion.txt')
 
 require('6000.3.18f1' in project_version, 'Project must remain pinned to Unity 6000.3.18f1')
+require(PLAYER_SETTINGS.exists(), 'ProjectSettings.asset must be committed so input defines are stable before Unity starts')
+require(re.search(r'^\s*activeInputHandler:\s*2\s*$', player_settings, re.MULTILINE) is not None,
+        'ProjectSettings.asset must persist Active Input Handling=Both (2) before editor compilation')
 require(WORKFLOW.exists(), 'Missing .github/workflows/unity-webgl.yml')
 require('workflow_dispatch:' in workflow, 'Workflow must support manual browser-build dispatch')
 require('game-ci/unity-test-runner@v4' in workflow, 'Workflow must run Unity tests with GameCI v4')
@@ -46,6 +51,7 @@ require('public static void Build()' in builder, 'CI build entry point must be p
 require('BuildW01_01VerticalSlice.Build();' in builder, 'CI must generate the authoritative vertical-slice scene before building')
 require('BuildPipeline.BuildPlayer' in builder, 'CI must call Unity BuildPipeline.BuildPlayer')
 require('BuildTarget.WebGL' in builder, 'CI build target must be WebGL')
+require('SetActiveInputHandlingBoth()' in builder, 'CI must verify the effective Unity 6 input setting before building')
 require('WebGLCompressionFormat.Brotli' in builder, 'Release Web build must use Brotli')
 require('PlayerSettings.WebGL.dataCaching = true' in builder, 'Release Web build must enable data caching')
 require('PlayerSettings.WebGL.decompressionFallback = !releaseBuild' in builder, 'Preview must enable fallback while release disables it')
