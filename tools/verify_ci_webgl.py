@@ -41,7 +41,7 @@ require('pages: write' in workflow and 'id-token: write' in workflow, 'Pages dep
 require('${{ secrets.UNITY_LICENSE }}' in workflow, 'Unity license must come from GitHub Secrets')
 require('${{ secrets.UNITY_EMAIL }}' in workflow, 'Unity email must come from GitHub Secrets')
 require('${{ secrets.UNITY_PASSWORD }}' in workflow, 'Unity password must come from GitHub Secrets')
-require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the vertical-slice visual contract before Unity tests')
+require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the production visual contract before Unity tests')
 
 # Active Input Handling changes Unity's compile-time symbols. It must therefore be persisted
 # before the editor starts, not mutated from a build method after packages are compiled.
@@ -55,7 +55,12 @@ require(re.search(r'^\s*disableOldInputManagerSupport:\s*0\s*$', player_settings
 
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')
-require('BuildW01_01VerticalSlice.Build();' in builder, 'CI must generate the authoritative vertical-slice scene before building')
+require('BuildWorld1Scenes.BuildPreviewScene()' in builder,
+        'CI must generate its browser preview through the generic StageDefinition-driven World 1 builder')
+require('BuildW01_01VerticalSlice' not in builder,
+        'CI must not depend on the deleted W01-01-specific vertical-slice builder')
+require('W01_01CourseDefinition' not in builder,
+        'CI must not depend on legacy W01-01 collision truth')
 require('BuildPipeline.BuildPlayer' in builder, 'CI must call Unity BuildPipeline.BuildPlayer')
 require('BuildTarget.WebGL' in builder, 'CI build target must be WebGL')
 require('WebGLCompressionFormat.Brotli' in builder, 'Release Web build must use Brotli')

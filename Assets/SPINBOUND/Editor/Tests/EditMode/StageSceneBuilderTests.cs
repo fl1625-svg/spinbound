@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -90,6 +91,71 @@ namespace Spinbound.EditorTools.Tests.EditMode
             Assert.That(configureStage, Is.Not.Null, "UnityRotorGameHost must be stage-driven instead of hard-coded to W01-01.");
         }
 
+        [Test]
+        public void W0101ProductionScene_PreservesCalibratedVisualStack_AndSemanticPresentationBindings()
+        {
+            Type builderType = Require("Spinbound.EditorTools.StageSceneBuilder, Spinbound.Editor");
+            Type profileType = Require("Spinbound.Presentation.World.StagePresentationProfile, Spinbound.Presentation");
+            Type bindingType = Require("Spinbound.Presentation.World.StageSemanticBinding, Spinbound.Presentation");
+
+            var profile = ScriptableObject.CreateInstance(profileType);
+            MethodInfo configureProfile = profileType.GetMethod("Configure", BindingFlags.Public | BindingFlags.Instance);
+            Assert.That(configureProfile, Is.Not.Null);
+            configureProfile.Invoke(profile, new object[] { "daisy-meadow", true });
+
+            MethodInfo build = builderType.GetMethod("Build", BindingFlags.Public | BindingFlags.Static);
+            Assert.That(build, Is.Not.Null);
+            build.Invoke(null, new object[] { W01_01_FirstSpin.Definition, profile });
+
+            Camera camera = UnityEngine.Object.FindFirstObjectByType<Camera>();
+            Assert.That(camera, Is.Not.Null);
+            Assert.That(camera.clearFlags, Is.EqualTo(CameraClearFlags.Skybox));
+            Assert.That(camera.fieldOfView, Is.EqualTo(41f).Within(.01f));
+            Assert.That(RenderSettings.skybox, Is.Not.Null);
+            Assert.That(RenderSettings.skybox.shader, Is.Not.Null);
+            Assert.That(RenderSettings.skybox.shader.name, Is.EqualTo("SPINBOUND/Highland Sky"));
+
+            Component cameraData = camera.GetComponents<Component>()
+                .FirstOrDefault(component => component != null &&
+                    component.GetType().FullName == "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
+            Assert.That(cameraData, Is.Not.Null, "Production camera must keep URP additional camera data.");
+            Assert.That(ReadProperty<bool>(cameraData, "renderPostProcessing"), Is.True);
+            object antialiasing = ReadProperty<object>(cameraData, "antialiasing");
+            Assert.That(antialiasing.ToString(), Is.EqualTo("SubpixelMorphologicalAntiAliasing"));
+
+            Component volume = FindComponentByFullName("UnityEngine.Rendering.Volume");
+            Assert.That(volume, Is.Not.Null, "Production scene must contain a global post-processing volume.");
+            Assert.That(ReadProperty<bool>(volume, "isGlobal"), Is.True);
+            object volumeProfile = ReadProperty<object>(volume, "sharedProfile");
+            Assert.That(volumeProfile, Is.Not.Null);
+
+            var volumeComponentNames = ReadCollection(volumeProfile, "components")
+                .Cast<object>()
+                .Where(item => item != null)
+                .Select(item => item.GetType().Name)
+                .ToHashSet(StringComparer.Ordinal);
+            CollectionAssert.IsSupersetOf(
+                volumeComponentNames,
+                new[] { "Bloom", "Tonemapping", "ColorAdjustments", "WhiteBalance", "Vignette" });
+
+            Component[] bindings = UnityEngine.Object.FindObjectsByType<Component>(FindObjectsSortMode.None)
+                .Where(component => component != null && component.GetType() == bindingType)
+                .ToArray();
+
+            PropertyInfo semanticIdProperty = bindingType.GetProperty("SemanticId", BindingFlags.Public | BindingFlags.Instance);
+            Assert.That(semanticIdProperty, Is.Not.Null);
+            foreach (var collider in W01_01_FirstSpin.Definition.Colliders)
+            {
+                Component visibleBinding = bindings.FirstOrDefault(binding =>
+                    string.Equals((string)semanticIdProperty.GetValue(binding), collider.Id, StringComparison.Ordinal) &&
+                    binding.GetComponentsInChildren<Renderer>(true).Any(renderer => renderer.enabled));
+                Assert.That(visibleBinding, Is.Not.Null,
+                    $"Presentation art for gameplay collider '{collider.Id}' must bind by semantic ID and remain visible.");
+            }
+
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+
         private static Type Resolve(string assemblyQualifiedName) => Type.GetType(assemblyQualifiedName, throwOnError: false);
 
         private static Type Require(string assemblyQualifiedName)
@@ -111,6 +177,36 @@ namespace Spinbound.EditorTools.Tests.EditMode
             PropertyInfo property = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
             Assert.That(property, Is.Not.Null, $"Missing report property {propertyName}.");
             return property.GetValue(instance) as T;
+        }
+
+        private static T ReadProperty<T>(object instance, string propertyName)
+        {
+            PropertyInfo property = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            Assert.That(property, Is.Not.Null, $"Missing property {instance.GetType().FullName}.{propertyName}.");
+            return (T)property.GetValue(instance);
+        }
+
+        private static Component FindComponentByFullName(string fullName)
+        {
+            foreach (GameObject root in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                Component match = root.GetComponentsInChildren<Component>(true)
+                    .FirstOrDefault(component => component != null && component.GetType().FullName == fullName);
+                if (match != null) return match;
+            }
+            return null;
+        }
+
+        private static IEnumerable ReadCollection(object instance, string memberName)
+        {
+            Type type = instance.GetType();
+            PropertyInfo property = type.GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (property != null)
+                return property.GetValue(instance) as IEnumerable;
+
+            FieldInfo field = type.GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.That(field, Is.Not.Null, $"Missing collection member {type.FullName}.{memberName}.");
+            return field.GetValue(instance) as IEnumerable;
         }
     }
 }

@@ -11,12 +11,11 @@ namespace Spinbound.EditorTools.CI
 {
     /// <summary>
     /// Single authoritative CI entry point for SPINBOUND Web builds.
-    /// It generates the same Unity scene used by the project and then builds that scene.
+    /// It generates the same StageDefinition-driven Unity scene used by the project and then builds that scene.
     /// No browser-only gameplay mirror is permitted.
     /// </summary>
     public static class CiWebBuild
     {
-        private const string GeneratedScenePath = "Assets/SPINBOUND/Worlds/W01/DaisyHighlands/Scenes/W01_01_VerticalSlice.unity";
         private const string DefaultBuildPath = "build/WebGL/SPINBOUND";
         private const string GeneratedRenderingFolder = "Assets/SPINBOUND/Generated/Rendering";
         private const string PipelineAssetPath = GeneratedRenderingFolder + "/SPINBOUND_Web_URP.asset";
@@ -46,19 +45,19 @@ namespace Spinbound.EditorTools.CI
                 ValidateRequiredShaders();
                 RecordDiagnostic("ValidateRequiredShaders completed.");
 
-                BuildW01_01VerticalSlice.Build();
-                RecordDiagnostic("BuildW01_01VerticalSlice completed.");
+                string generatedScenePath = BuildWorld1Scenes.BuildPreviewScene();
+                RecordDiagnostic($"BuildWorld1Scenes.BuildPreviewScene completed: {generatedScenePath}");
 
-                if (!File.Exists(GeneratedScenePath))
+                if (string.IsNullOrWhiteSpace(generatedScenePath) || !File.Exists(generatedScenePath))
                 {
-                    throw new InvalidOperationException($"Generated scene was not created: {GeneratedScenePath}");
+                    throw new InvalidOperationException($"Generated scene was not created: {generatedScenePath}");
                 }
 
                 Directory.CreateDirectory(buildPath);
 
                 var options = new BuildPlayerOptions
                 {
-                    scenes = new[] { GeneratedScenePath },
+                    scenes = new[] { generatedScenePath },
                     locationPathName = buildPath,
                     target = BuildTarget.WebGL,
                     options = BuildOptions.None
