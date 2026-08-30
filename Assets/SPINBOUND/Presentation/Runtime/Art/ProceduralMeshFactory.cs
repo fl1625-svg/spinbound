@@ -78,6 +78,18 @@ namespace Spinbound.Presentation.Art
             for(int y=0;y<2;y++) for(int s=0;s<segments;s++)
             { float a=Mathf.PI*2*s/segments; float rr=radius*(y==1?topRadiusFactor:1f); var n=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a)); verts.Add(new Vector3(n.x*rr,(y-.5f)*height,n.z*rr));normals.Add(n);uv.Add(new Vector2((float)s/segments,y)); }
             for(int s=0;s<segments;s++){int n=(s+1)%segments,a=s,b=n,c=segments+s,d=segments+n;tris.Add(a);tris.Add(d);tris.Add(c);tris.Add(a);tris.Add(b);tris.Add(d);}
+
+            float topY=height*.5f, bottomY=-height*.5f, topRadius=radius*topRadiusFactor;
+            int topCenter=verts.Count; verts.Add(new Vector3(0,topY,0)); normals.Add(Vector3.up); uv.Add(new Vector2(.5f,.5f));
+            int topRing=verts.Count;
+            for(int s=0;s<segments;s++){float a=Mathf.PI*2*s/segments;float x=Mathf.Cos(a),z=Mathf.Sin(a);verts.Add(new Vector3(x*topRadius,topY,z*topRadius));normals.Add(Vector3.up);uv.Add(new Vector2(x*.5f+.5f,z*.5f+.5f));}
+            for(int s=0;s<segments;s++){int n=(s+1)%segments;tris.Add(topCenter);tris.Add(topRing+n);tris.Add(topRing+s);}
+
+            int bottomCenter=verts.Count; verts.Add(new Vector3(0,bottomY,0)); normals.Add(Vector3.down); uv.Add(new Vector2(.5f,.5f));
+            int bottomRing=verts.Count;
+            for(int s=0;s<segments;s++){float a=Mathf.PI*2*s/segments;float x=Mathf.Cos(a),z=Mathf.Sin(a);verts.Add(new Vector3(x*radius,bottomY,z*radius));normals.Add(Vector3.down);uv.Add(new Vector2(x*.5f+.5f,z*.5f+.5f));}
+            for(int s=0;s<segments;s++){int n=(s+1)%segments;tris.Add(bottomCenter);tris.Add(bottomRing+s);tris.Add(bottomRing+n);}
+
             return Build(name,verts,normals,uv,tris);
         }
 
