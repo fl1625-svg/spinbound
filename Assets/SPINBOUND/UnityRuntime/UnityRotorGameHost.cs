@@ -28,6 +28,7 @@ namespace Spinbound.UnityRuntime
         private IPlatformBridge _platform;
         private bool _paused;
         private bool _gameplayReported;
+        private int _presentedHitCount;
 
         public void Configure(RotorPresenter presenter, AdventureHud hud = null, RotorFxDirector fx = null)
         {
@@ -41,7 +42,6 @@ namespace Spinbound.UnityRuntime
             if (string.IsNullOrWhiteSpace(stageId))
                 throw new ArgumentException("Stage id is required.", nameof(stageId));
 
-            // Resolve immediately so authored/generated scenes fail fast on invalid IDs.
             _stage = W01ReferenceRoutes.Get(stageId).Stage;
             _stageId = stageId;
         }
@@ -59,6 +59,7 @@ namespace Spinbound.UnityRuntime
             _presenter?.Apply(_session.State);
             _hud?.SetHearts(3);
             _hud?.SetTime(0f);
+            _presentedHitCount = _session.Hits;
         }
 
         private void Start() => ReportGameplayStart();
@@ -111,6 +112,12 @@ namespace Spinbound.UnityRuntime
             var tier = SpeedTierResolver.Resolve(buttonA, buttonB);
             _runner.Tick(Time.unscaledDeltaTime, input);
             _presenter?.Apply(_session.State);
+            _presenter?.SetSpeedTier(tier);
+            if (_session.Hits > _presentedHitCount)
+            {
+                _presenter?.PlayHitRecoil();
+                _presentedHitCount = _session.Hits;
+            }
             _fx?.SetSpeedTier(tier);
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
