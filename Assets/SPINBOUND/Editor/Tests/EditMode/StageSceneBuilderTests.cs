@@ -119,14 +119,14 @@ namespace Spinbound.EditorTools.Tests.EditMode
                 .FirstOrDefault(component => component != null &&
                     component.GetType().FullName == "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
             Assert.That(cameraData, Is.Not.Null, "Production camera must keep URP additional camera data.");
-            Assert.That(ReadProperty<bool>(cameraData, "renderPostProcessing"), Is.True);
-            object antialiasing = ReadProperty<object>(cameraData, "antialiasing");
+            Assert.That(ReadMember<bool>(cameraData, "renderPostProcessing"), Is.True);
+            object antialiasing = ReadMember<object>(cameraData, "antialiasing");
             Assert.That(antialiasing.ToString(), Is.EqualTo("SubpixelMorphologicalAntiAliasing"));
 
             Component volume = FindComponentByFullName("UnityEngine.Rendering.Volume");
             Assert.That(volume, Is.Not.Null, "Production scene must contain a global post-processing volume.");
-            Assert.That(ReadProperty<bool>(volume, "isGlobal"), Is.True);
-            object volumeProfile = ReadProperty<object>(volume, "sharedProfile");
+            Assert.That(ReadMember<bool>(volume, "isGlobal"), Is.True);
+            object volumeProfile = ReadMember<object>(volume, "sharedProfile");
             Assert.That(volumeProfile, Is.Not.Null);
 
             var volumeComponentNames = ReadCollection(volumeProfile, "components")
@@ -179,11 +179,16 @@ namespace Spinbound.EditorTools.Tests.EditMode
             return property.GetValue(instance) as T;
         }
 
-        private static T ReadProperty<T>(object instance, string propertyName)
+        private static T ReadMember<T>(object instance, string memberName)
         {
-            PropertyInfo property = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
-            Assert.That(property, Is.Not.Null, $"Missing property {instance.GetType().FullName}.{propertyName}.");
-            return (T)property.GetValue(instance);
+            Type type = instance.GetType();
+            PropertyInfo property = type.GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (property != null)
+                return (T)property.GetValue(instance);
+
+            FieldInfo field = type.GetField(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.That(field, Is.Not.Null, $"Missing member {type.FullName}.{memberName}.");
+            return (T)field.GetValue(instance);
         }
 
         private static Component FindComponentByFullName(string fullName)
