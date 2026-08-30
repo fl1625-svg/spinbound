@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
+using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -90,15 +92,11 @@ namespace Spinbound.EditorTools.CI
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
 
-#pragma warning disable CS0618
-            // Active Input Handling is a global PlayerSettings value, not a WebGL-specific
-            // per-target override. Using BuildTargetGroup.WebGL against a source-first project
-            // without ProjectSettings.asset can return an invalid native sentinel in Unity 6.
-            // Apply/read the global value explicitly so the generated Web player has both the
-            // new Input System and legacy browser keyboard backend enabled.
-            PlayerSettings.SetPropertyInt("activeInputHandler", 2, BuildTargetGroup.Unknown);
-            int activeInputHandler = PlayerSettings.GetPropertyInt("activeInputHandler", BuildTargetGroup.Unknown);
-#pragma warning restore CS0618
+            // Unity 6's obsolete named PlayerSettings API can return a native sentinel for
+            // activeInputHandler in source-first projects. The Input System package itself
+            // resolves the effective PlayerSettings object through BuildProfile and edits the
+            // serialized property directly, so CI mirrors that Unity-supported workaround.
+            int activeInputHandler = SetActiveInputHandlingBoth();
             if (activeInputHandler != 2)
             {
                 throw new InvalidOperationException(
@@ -114,6 +112,74 @@ namespace Spinbound.EditorTools.CI
             PlayerSettings.WebGL.decompressionFallback = !releaseBuild;
             PlayerSettings.WebGL.nameFilesAsHashes = releaseBuild;
             EditorUserBuildSettings.development = false;
+        }
+
+        private static int SetActiveInputHandlingBoth()
+        {
+            const string propertyName = "activeInputHandler";
+            const int both = 2;
+
+            Type buildProfileType = typeof(BuildProfile);
+            FieldInfo globalPlayerSettingsField = buildProfileType.GetField(
+                "s_GlobalPlayerSettings",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            if (globalPlayerSettingsField == null)
+            {
+                throw new InvalidOperationException(
+                    "SPINBOUND CI could not resolve Unity 6 global PlayerSettings through BuildProfile.");
+            }
+
+            PlayerSettings effectivePlayerSettings =
+                globalPlayerSettingsField.GetValue(null) as PlayerSettings;
+
+            BuildProfile activeBuildProfile = BuildProfile.GetActiveBuildProfile();
+            if (activeBuildProfile != null)
+            {
+                FieldInfo profilePlayerSettingsField = buildProfileType.GetField(
+                    "m_PlayerSettings",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                if (profilePlayerSettingsField == null)
+                {
+                    throw new InvalidOperationException(
+                        "SPINBOUND CI could not resolve the active Unity 6 build-profile PlayerSettings override.");
+                }
+
+                PlayerSettings profilePlayerSettings =
+                    profilePlayerSettingsField.GetValue(activeBuildProfile) as PlayerSettings;
+                if (profilePlayerSettings != null)
+                {
+                    effectivePlayerSettings = profilePlayerSettings;
+                }
+            }
+
+            if (effectivePlayerSettings == null)
+            {
+                throw new InvalidOperationException(
+                    "SPINBOUND CI could not resolve an effective Unity 6 PlayerSettings object.");
+            }
+
+            var serializedPlayerSettings = new SerializedObject(effectivePlayerSettings);
+            SerializedProperty activeInputHandler = serializedPlayerSettings.FindProperty(propertyName);
+            if (activeInputHandler == null)
+            {
+                throw new InvalidOperationException(
+                    $"SPINBOUND CI could not find serialized PlayerSettings property '{propertyName}'.");
+            }
+
+            activeInputHandler.intValue = both;
+            serializedPlayerSettings.ApplyModifiedProperties();
+
+            // Verify against a fresh SerializedObject so the assertion checks Unity's stored
+            // value rather than only the local SerializedProperty cache.
+            var verificationSettings = new SerializedObject(effectivePlayerSettings);
+            SerializedProperty verificationProperty = verificationSettings.FindProperty(propertyName);
+            if (verificationProperty == null)
+            {
+                throw new InvalidOperationException(
+                    $"SPINBOUND CI could not re-read serialized PlayerSettings property '{propertyName}'.");
+            }
+
+            return verificationProperty.intValue;
         }
 
         private static void EnsureUrpPipeline()
