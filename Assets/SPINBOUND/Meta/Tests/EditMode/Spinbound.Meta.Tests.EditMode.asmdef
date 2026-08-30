@@ -1,0 +1,10 @@
+{
+  "name": "Spinbound.Meta.Tests.EditMode",
+  "rootNamespace": "Spinbound.Meta.Tests.EditMode",
+  "references": ["Spinbound.Core", "Spinbound.Worlds", "Spinbound.Meta"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "noEngineReferences": true
+}
