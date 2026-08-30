@@ -55,8 +55,14 @@ require(re.search(r'^\s*disableOldInputManagerSupport:\s*0\s*$', player_settings
 
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')
-require('BuildWorld1Scenes.BuildPreviewScene()' in builder,
-        'CI must generate its browser preview through the generic StageDefinition-driven World 1 builder')
+require('BuildWorld1Scenes.BuildAll();' in builder,
+        'CI must batch-generate all eight World 1 scenes before the browser player build')
+require('AssertWorld1SceneBatch();' in builder,
+        'CI must verify the generated World 1 scene batch before the browser player build')
+require('AssetDatabase.AssetPathToGUID' in builder,
+        'CI must verify generated World 1 scenes have unique persistent Unity GUIDs')
+require('BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition)' in builder,
+        'CI must select W01-01 from the generic World 1 scene catalog as the WebGL entry scene')
 require('BuildW01_01VerticalSlice' not in builder,
         'CI must not depend on the deleted W01-01-specific vertical-slice builder')
 require('W01_01CourseDefinition' not in builder,

@@ -1,17 +1,19 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using Spinbound.Worlds.W01.DaisyMeadow;
 
 namespace Spinbound.EditorTools.CI
 {
     /// <summary>
     /// Single authoritative CI entry point for SPINBOUND Web builds.
-    /// It generates the same StageDefinition-driven Unity scene used by the project and then builds that scene.
+    /// It generates the StageDefinition-driven World 1 scenes used by the project and then builds W01-01.
     /// No browser-only gameplay mirror is permitted.
     /// </summary>
     public static class CiWebBuild
@@ -45,13 +47,10 @@ namespace Spinbound.EditorTools.CI
                 ValidateRequiredShaders();
                 RecordDiagnostic("ValidateRequiredShaders completed.");
 
-                string generatedScenePath = BuildWorld1Scenes.BuildPreviewScene();
-                RecordDiagnostic($"BuildWorld1Scenes.BuildPreviewScene completed: {generatedScenePath}");
-
-                if (string.IsNullOrWhiteSpace(generatedScenePath) || !File.Exists(generatedScenePath))
-                {
-                    throw new InvalidOperationException($"Generated scene was not created: {generatedScenePath}");
-                }
+                BuildWorld1Scenes.BuildAll();
+                AssertWorld1SceneBatch();
+                string generatedScenePath = BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition);
+                RecordDiagnostic($"BuildWorld1Scenes.BuildAll completed. WebGL entry scene: {generatedScenePath}");
 
                 Directory.CreateDirectory(buildPath);
 
@@ -125,6 +124,35 @@ namespace Spinbound.EditorTools.CI
 
             Debug.Log("SPINBOUND CI: editor compiled with Input System + legacy Input Manager from persisted project settings.");
 #endif
+        }
+
+        private static void AssertWorld1SceneBatch()
+        {
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var guids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (W01StageRouteContract contract in W01ReferenceRoutes.All)
+            {
+                string path = BuildWorld1Scenes.GetScenePath(contract.Stage);
+                if (!File.Exists(path))
+                    throw new InvalidOperationException($"World 1 scene batch did not create: {path}");
+                if (!paths.Add(path))
+                    throw new InvalidOperationException($"World 1 scene batch produced a duplicate path: {path}");
+
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                if (string.IsNullOrWhiteSpace(guid))
+                    throw new InvalidOperationException($"World 1 scene is missing an AssetDatabase GUID: {path}");
+                if (!guids.Add(guid))
+                    throw new InvalidOperationException($"World 1 scene batch produced a duplicate GUID: {guid} ({path})");
+            }
+
+            if (paths.Count != W01ReferenceRoutes.All.Count || guids.Count != W01ReferenceRoutes.All.Count)
+            {
+                throw new InvalidOperationException(
+                    $"World 1 scene batch count mismatch: paths={paths.Count}, guids={guids.Count}, contracts={W01ReferenceRoutes.All.Count}");
+            }
+
+            RecordDiagnostic($"World 1 scene batch verified: scenes={paths.Count}, uniqueGuids={guids.Count}");
         }
 
         private static void EnsureUrpPipeline()
