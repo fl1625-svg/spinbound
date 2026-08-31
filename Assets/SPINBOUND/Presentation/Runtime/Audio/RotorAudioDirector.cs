@@ -81,9 +81,15 @@ namespace Spinbound.Presentation.Audio
             foreach (AudioSource source in sources)
             {
                 if (source == null || source.clip == null) continue;
-                if (_paused) source.Pause();
-                else if (source.isPlaying) source.UnPause();
-                else source.Play();
+                if (_paused)
+                {
+                    source.Pause();
+                }
+                else
+                {
+                    source.UnPause();
+                    if (!source.isPlaying) source.Play();
+                }
             }
         }
 
