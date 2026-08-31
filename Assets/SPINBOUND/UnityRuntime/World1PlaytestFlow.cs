@@ -34,6 +34,7 @@ namespace Spinbound.UnityRuntime
         public event Action<bool> ModalPauseChanged;
         public event Action<AccessibilitySettings> SettingsChanged;
         public AccessibilitySettings Settings => _settings;
+        public bool IsSettingsOpen => _settingsOpen;
 
         public static World1PlaytestFlow Build(StageDefinition stage)
         {
@@ -59,6 +60,12 @@ namespace Spinbound.UnityRuntime
 
         private void Update()
         {
+            if (_settingsOpen && Input.GetKeyDown(KeyCode.Escape))
+            {
+                CloseSettings();
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.P))
                 ToggleSettings();
 
