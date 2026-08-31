@@ -49,10 +49,14 @@ for token in (
 
 require('PlayerPrefsKey' in access and 'JsonUtility' in access and 'Save()' in access,
         'Accessibility settings must persist locally with a versioned key')
-require('SettingsPanel.Build' in flow and 'SETTINGS  [P]' in flow,
-        'Stage flow must expose the settings panel')
+require('SettingsPanel.Build' in flow and 'SETTINGS  [P/ESC]' in flow,
+        'Stage flow must expose the settings panel with P/Escape input guidance')
 require('ModalPauseChanged' in flow and 'IsSettingsOpen' in flow,
         'Settings modal must coordinate authoritative pause state')
+require('KeyCode.Escape' in flow,
+        'World1PlaytestFlow must be the single owner of Escape settings input')
+require('KeyCode.Escape' not in host and 'escapeKey.wasPressedThisFrame' not in host,
+        'UnityRotorGameHost must not independently process Escape; Flow owns modal pause input')
 require('ModalPauseChanged += OnModalPauseChanged' in host,
         'UnityRotorGameHost must pause/resume from settings modal events')
 require('ApplyAccessibility' in fx and '_fx?.ApplyAccessibility(settings)' in host,
