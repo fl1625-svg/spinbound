@@ -31,6 +31,7 @@ namespace Spinbound.UnityRuntime
         private bool _paused;
         private bool _completed;
         private bool _gameplayReported;
+        private bool _flowEventsBound;
         private int _presentedHitCount;
 
         public void Configure(RotorPresenter presenter, AdventureHud hud = null, RotorFxDirector fx = null, World1PlaytestFlow flow = null)
@@ -67,7 +68,12 @@ namespace Spinbound.UnityRuntime
             _presentedHitCount = _session.Hits;
         }
 
-        private void Start() => ReportGameplayStart();
+        private void Start()
+        {
+            BindFlowEvents();
+            ApplySettings(_flow != null ? _flow.Settings : AccessibilitySettings.Load());
+            ReportGameplayStart();
+        }
 
         private void Update()
         {
@@ -149,11 +155,39 @@ namespace Spinbound.UnityRuntime
 
         private void OnDisable()
         {
+            UnbindFlowEvents();
             if (_gameplayReported)
             {
                 _platform?.GameplayStop();
                 _gameplayReported = false;
             }
+        }
+
+        private void BindFlowEvents()
+        {
+            if (_flow == null || _flowEventsBound) return;
+            _flow.ModalPauseChanged += OnModalPauseChanged;
+            _flow.SettingsChanged += ApplySettings;
+            _flowEventsBound = true;
+        }
+
+        private void UnbindFlowEvents()
+        {
+            if (_flow == null || !_flowEventsBound) return;
+            _flow.ModalPauseChanged -= OnModalPauseChanged;
+            _flow.SettingsChanged -= ApplySettings;
+            _flowEventsBound = false;
+        }
+
+        private void OnModalPauseChanged(bool paused)
+        {
+            SetPaused(paused);
+        }
+
+        private void ApplySettings(AccessibilitySettings settings)
+        {
+            if (settings == null) return;
+            _fx?.ApplyAccessibility(settings);
         }
 
         private void SetPaused(bool paused)
