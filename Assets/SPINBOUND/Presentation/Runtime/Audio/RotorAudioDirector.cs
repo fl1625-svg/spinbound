@@ -100,8 +100,9 @@ namespace Spinbound.Presentation.Audio
 
         private void ApplyMix()
         {
-            float speed2 = _tier >= SpeedTier.Speed2 ? 1f : 0f;
-            float speed3 = _tier >= SpeedTier.Speed3 ? 1f : 0f;
+            int tierValue = (int)_tier;
+            float speed2 = tierValue >= (int)SpeedTier.Speed2 ? 1f : 0f;
+            float speed3 = tierValue >= (int)SpeedTier.Speed3 ? 1f : 0f;
             SetVolume(_coreHum, .50f * _sfxVolume);
             SetVolume(_rotationAir, .46f * _sfxVolume);
             SetVolume(_movement, .32f * _sfxVolume);
