@@ -84,7 +84,7 @@ namespace Spinbound.UnityRuntime
             bool escapePressed =
                 (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) ||
                 Input.GetKeyDown(KeyCode.Escape);
-            if (escapePressed)
+            if (escapePressed && !(_flow?.IsSettingsOpen ?? false))
                 SetPaused(!_paused);
             if (_paused || _completed) return;
 
