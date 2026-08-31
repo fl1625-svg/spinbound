@@ -27,6 +27,7 @@ namespace Spinbound.UnityRuntime
         private RunSession _session;
         private FixedStepRotorRunner _runner;
         private IPlatformBridge _platform;
+        private RotorMode _mode;
         private bool _paused;
         private bool _completed;
         private bool _gameplayReported;
@@ -55,8 +56,8 @@ namespace Spinbound.UnityRuntime
             WebGLInput.captureAllKeyboardInput = true;
 #endif
             _stage ??= W01ReferenceRoutes.Get(_stageId).Stage;
-            var mode = _assistMode ? RotorMode.Assist : RotorMode.Standard;
-            _session = new RunSession(_stage.StartFor(mode));
+            _mode = _assistMode ? RotorMode.Assist : RotorMode.Standard;
+            _session = new RunSession(_stage.StartFor(_mode));
             _runner = new FixedStepRotorRunner(new CollisionWorld(_stage.Colliders), _session);
             _platform = new CrazyGamesPlatformBridge();
             _presenter?.Apply(_session.State);
@@ -143,7 +144,7 @@ namespace Spinbound.UnityRuntime
             if (_completed) return;
             _completed = true;
             ReportGameplayStop();
-            _flow?.CompleteStage(_stage, _session.ElapsedSeconds, _session.Hits);
+            _flow?.CompleteStage(_stage, _session.ElapsedSeconds, _session.Hits, _mode);
         }
 
         private void OnDisable()

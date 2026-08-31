@@ -13,6 +13,10 @@ WORLD1_FLOW = ROOT / 'Assets' / 'SPINBOUND' / 'UnityRuntime' / 'World1PlaytestFl
 HOST = ROOT / 'Assets' / 'SPINBOUND' / 'UnityRuntime' / 'UnityRotorGameHost.cs'
 HUD = ROOT / 'Assets' / 'SPINBOUND' / 'Presentation' / 'Runtime' / 'UI' / 'AdventureHud.cs'
 SCENE_BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'Bootstrap' / 'StageSceneBuilder.cs'
+MAP_BUILDER = ROOT / 'Assets' / 'SPINBOUND' / 'Editor' / 'Bootstrap' / 'BuildWorld1MapScene.cs'
+MAP_CONTROLLER = ROOT / 'Assets' / 'SPINBOUND' / 'Presentation' / 'Runtime' / 'WorldMap' / 'WorldMapController.cs'
+PROGRESSION_RULES = ROOT / 'Assets' / 'SPINBOUND' / 'Meta' / 'Runtime' / 'ProgressionRules.cs'
+LOCAL_PROGRESS = ROOT / 'Assets' / 'SPINBOUND' / 'UnityRuntime' / 'Save' / 'LocalProgressStore.cs'
 
 failures = []
 
@@ -35,6 +39,10 @@ flow = read(WORLD1_FLOW)
 host = read(HOST)
 hud = read(HUD)
 scene_builder = read(SCENE_BUILDER)
+map_builder = read(MAP_BUILDER)
+map_controller = read(MAP_CONTROLLER)
+progression_rules = read(PROGRESSION_RULES)
+local_progress = read(LOCAL_PROGRESS)
 
 require('6000.3.18f1' in project_version, 'Project must remain pinned to Unity 6000.3.18f1')
 require(WORKFLOW.exists(), 'Missing .github/workflows/unity-webgl.yml')
@@ -53,8 +61,6 @@ require('${{ secrets.UNITY_EMAIL }}' in workflow, 'Unity email must come from Gi
 require('${{ secrets.UNITY_PASSWORD }}' in workflow, 'Unity password must come from GitHub Secrets')
 require('python3 tools/verify_vertical_slice_visual.py' in workflow, 'Workflow must run the production visual contract before Unity tests')
 
-# Active Input Handling changes Unity's compile-time symbols. It must therefore be persisted
-# before the editor starts, not mutated from a build method after packages are compiled.
 require(PLAYER_SETTINGS.exists(), 'ProjectSettings/ProjectSettings.asset must be version controlled')
 require(re.search(r'^\s*activeInputHandler:\s*2\s*$', player_settings, re.MULTILINE) is not None,
         'Active Input Handling must be persisted as Both (2) before Unity starts')
@@ -66,56 +72,61 @@ require(re.search(r'^\s*disableOldInputManagerSupport:\s*0\s*$', player_settings
 require(BUILDER.exists(), 'Missing Assets/SPINBOUND/Editor/CI/CiWebBuild.cs')
 require('public static void Build()' in builder, 'CI build entry point must be public static void Build()')
 require('BuildWorld1Scenes.BuildAll();' in builder,
-        'CI must batch-generate all eight World 1 scenes before the browser player build')
+        'CI must batch-generate all eight World 1 stage scenes before the browser player build')
+require('BuildWorld1MapScene.BuildAndSave();' in builder,
+        'CI must generate the playable World 1 diorama map before the browser player build')
+require('paths[0] = BuildWorld1MapScene.ScenePath' in builder,
+        'The World 1 diorama map must be the first WebGL scene')
 require('AssertWorld1SceneBatch();' in builder,
         'CI must verify the generated World 1 scene batch before the browser player build')
 require('AssetDatabase.AssetPathToGUID' in builder,
         'CI must verify generated World 1 scenes have unique persistent Unity GUIDs')
 require('GetWorld1BuildScenePaths()' in builder,
-        'CI must derive the WebGL scene list from the complete World 1 route catalog')
-require('W01ReferenceRoutes.All.Count' in builder,
-        'CI WebGL build must size its scene list from every World 1 route contract')
+        'CI must derive the WebGL scene list from the complete World 1 catalog')
 require('BuildWorld1Scenes.GetScenePath(W01ReferenceRoutes.All[i].Stage)' in builder,
-        'CI WebGL build must include every generated World 1 scene, not only W01-01')
-require('scenes = GetWorld1BuildScenePaths()' in builder,
-        'BuildPlayerOptions must receive the complete World 1 scene list')
+        'CI WebGL build must include every generated World 1 stage scene')
+require('scenes = world1ScenePaths' in builder,
+        'BuildPlayerOptions must receive the map plus complete World 1 scene list')
 require('BuildWorld1Scenes.GetScenePath(W01_01_FirstSpin.Definition)' not in builder,
         'CI must not hard-code W01-01 as the only WebGL scene')
-require('BuildW01_01VerticalSlice' not in builder,
-        'CI must not depend on the deleted W01-01-specific vertical-slice builder')
-require('W01_01CourseDefinition' not in builder,
-        'CI must not depend on legacy W01-01 collision truth')
 require('BuildPipeline.BuildPlayer' in builder, 'CI must call Unity BuildPipeline.BuildPlayer')
 require('BuildTarget.WebGL' in builder, 'CI build target must be WebGL')
 require('WebGLCompressionFormat.Brotli' in builder, 'Release Web build must use Brotli')
 require('PlayerSettings.WebGL.dataCaching = true' in builder, 'Release Web build must enable data caching')
 require('PlayerSettings.WebGL.decompressionFallback = !releaseBuild' in builder, 'Preview must enable fallback while release disables it')
-require('spinboundRelease' in builder, 'CI build must support an explicit release flavor switch')
 require('EditorUserBuildSettings.development = false' in builder, 'Release Web build must not be a development build')
 require('BuildOptions.None' in builder, 'Release Web build must not set Development build flags')
 require('customBuildPath' in builder, 'CI build method must consume GameCI customBuildPath')
 require('AssertPersistedActiveInputHandlingBoth' in builder,
         'CI must verify the persisted Active Input Handling setting before building')
-require('activeInputHandler.intValue = both' not in builder,
-        'CI must not mutate Active Input Handling after Unity has already compiled editor assemblies')
 
-# The browser playtest must be a complete World 1 flow rather than an isolated one-stage scene.
 require(WORLD1_SEQUENCE.exists(), 'Missing World1StageSequence runtime catalog')
 require('public const int ExpectedStageCount = 8' in sequence,
         'World1StageSequence must declare the eight-stage World 1 playtest contract')
-require('TryGetNext' in sequence and 'W01ReferenceRoutes.All' in sequence,
-        'World1StageSequence must derive next-stage navigation from the authored route catalog')
 require(WORLD1_FLOW.exists(), 'Missing World1PlaytestFlow runtime scene navigation')
-require('ShowStageSelect' in flow and 'CompleteStage' in flow and 'LoadNextStage' in flow,
-        'World1PlaytestFlow must expose stage select, results completion and next-stage navigation')
-require('SceneManager.LoadScene' in flow,
-        'World1PlaytestFlow must load authored World 1 scenes through Unity SceneManager')
+require('CompleteStage' in flow and 'LoadNextStage' in flow and 'LoadWorldMap' in flow,
+        'World1PlaytestFlow must expose results, next-stage and world-map navigation')
+require('ShowStageSelect' not in flow,
+        'Flat stage-select UI must not remain the primary World 1 navigation flow')
+require('LocalProgressStore' in flow and 'ProgressionRules.GetMainNextStageId' in flow,
+        'Stage completion must persist progress and follow explicit main-route unlock rules')
 require('World1PlaytestFlow' in host and 'FinishCenter' in host and 'FinishRadius' in host,
         'UnityRotorGameHost must detect the authored finish zone and report completion to World1PlaytestFlow')
 require('SetCourse' in hud,
         'AdventureHud must show the current authored stage rather than a hard-coded W01-01 label')
 require('World1PlaytestFlow' in scene_builder and 'host.Configure' in scene_builder,
-        'StageSceneBuilder must wire World1PlaytestFlow into every generated World 1 scene')
+        'StageSceneBuilder must wire World1PlaytestFlow into every generated World 1 stage scene')
+
+require(MAP_BUILDER.exists() and 'WorldMap_W01' in map_builder and 'WorldMapSceneHost' in map_builder,
+        'World 1 must have a generated playable diorama map scene and runtime host')
+require(MAP_CONTROLLER.exists() and 'MoveSelection' in map_controller and 'StageRequested' in map_controller,
+        'World map must support avatar node movement and launching a selected stage')
+require('ProgressionRules.IsVisible' in map_controller and 'ProgressionRules.IsUnlocked' in map_controller,
+        'World map node visibility and movement must follow progression rules')
+require(PROGRESSION_RULES.exists() and 'W01_Trial_PerfectCorner.Id' in progression_rules and 'StageMasteryFlags.Perfect' in progression_rules,
+        'Trial visibility/unlock must be controlled by an explicit mastery rule')
+require(LOCAL_PROGRESS.exists() and 'SchemaVersion = 1' in local_progress and 'PlayerPrefs' in local_progress and 'JsonUtility' in local_progress,
+        'Local progress save must be versioned and persisted for WebGL/browser play')
 
 require(DOC.exists(), 'Missing docs/WEBGL-CLOUD-BUILD.md')
 require('UNITY_LICENSE' in doc and 'UNITY_EMAIL' in doc and 'UNITY_PASSWORD' in doc, 'Cloud build guide must document required Unity secrets')

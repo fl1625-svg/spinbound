@@ -1,6 +1,6 @@
 {
   "name": "Spinbound.UnityRuntime",
   "rootNamespace": "Spinbound.UnityRuntime",
-  "references": ["Spinbound.Core", "Spinbound.Worlds", "Spinbound.Presentation", "Spinbound.Platform", "Unity.InputSystem", "Unity.UGUI"],
+  "references": ["Spinbound.Core", "Spinbound.Worlds", "Spinbound.Meta", "Spinbound.Presentation", "Spinbound.Platform", "Unity.InputSystem", "Unity.UGUI"],
   "autoReferenced": true
 }

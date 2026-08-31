@@ -3,6 +3,8 @@
   "rootNamespace": "Spinbound.Presentation",
   "references": [
     "Spinbound.Core",
+    "Spinbound.Worlds",
+    "Spinbound.Meta",
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.UGUI"
   ],

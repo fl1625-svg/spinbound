@@ -13,7 +13,7 @@ namespace Spinbound.EditorTools.CI
 {
     /// <summary>
     /// Single authoritative CI entry point for SPINBOUND Web builds.
-    /// It generates and packages the complete StageDefinition-driven World 1 scene catalog.
+    /// It generates and packages the playable World 1 diorama map plus the complete StageDefinition-driven scene catalog.
     /// No browser-only gameplay mirror is permitted.
     /// </summary>
     public static class CiWebBuild
@@ -48,15 +48,16 @@ namespace Spinbound.EditorTools.CI
                 RecordDiagnostic("ValidateRequiredShaders completed.");
 
                 BuildWorld1Scenes.BuildAll();
+                BuildWorld1MapScene.BuildAndSave();
                 AssertWorld1SceneBatch();
                 string[] world1ScenePaths = GetWorld1BuildScenePaths();
-                RecordDiagnostic($"BuildWorld1Scenes.BuildAll completed. WebGL scenes={world1ScenePaths.Length}, entry={world1ScenePaths[0]}");
+                RecordDiagnostic($"World 1 scene generation completed. WebGL scenes={world1ScenePaths.Length}, entry={world1ScenePaths[0]}");
 
                 Directory.CreateDirectory(buildPath);
 
                 var options = new BuildPlayerOptions
                 {
-                    scenes = GetWorld1BuildScenePaths(),
+                    scenes = world1ScenePaths,
                     locationPathName = buildPath,
                     target = BuildTarget.WebGL,
                     options = BuildOptions.None
@@ -86,16 +87,16 @@ namespace Spinbound.EditorTools.CI
 
         private static string[] GetWorld1BuildScenePaths()
         {
-            var paths = new string[W01ReferenceRoutes.All.Count];
+            var paths = new string[W01ReferenceRoutes.All.Count + 1];
+            paths[0] = BuildWorld1MapScene.ScenePath;
             for (int i = 0; i < W01ReferenceRoutes.All.Count; i++)
-            {
-                paths[i] = BuildWorld1Scenes.GetScenePath(W01ReferenceRoutes.All[i].Stage);
-            }
+                paths[i + 1] = BuildWorld1Scenes.GetScenePath(W01ReferenceRoutes.All[i].Stage);
 
-            if (paths.Length != World1StageSequence.ExpectedStageCount)
+            int expected = World1StageSequence.ExpectedStageCount + 1;
+            if (paths.Length != expected)
             {
                 throw new InvalidOperationException(
-                    $"World 1 WebGL scene count mismatch: expected={World1StageSequence.ExpectedStageCount}, actual={paths.Length}");
+                    $"World 1 WebGL scene count mismatch: expected={expected}, actual={paths.Length}");
             }
 
             return paths;
@@ -103,18 +104,12 @@ namespace Spinbound.EditorTools.CI
 
         private static void ConfigureWebSettings(bool releaseBuild)
         {
-            // Active Input Handling changes Unity's compile-time symbols. Mutating it here is
-            // too late: editor/package assemblies have already compiled. Assert that the
-            // version-controlled project setting was applied before this editor session began.
             AssertPersistedActiveInputHandlingBoth();
 
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
             PlayerSettings.WebGL.dataCaching = true;
-            // GitHub Pages cannot guarantee Unity's required Content-Encoding: br header.
-            // Preview builds therefore use Unity's JS fallback; release builds disable it
-            // for hosts such as CrazyGames that are configured for native decompression.
             PlayerSettings.WebGL.decompressionFallback = !releaseBuild;
             PlayerSettings.WebGL.nameFilesAsHashes = releaseBuild;
             EditorUserBuildSettings.development = false;
@@ -148,28 +143,32 @@ namespace Spinbound.EditorTools.CI
             var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var guids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            AssertScene(BuildWorld1MapScene.ScenePath, paths, guids);
             foreach (W01StageRouteContract contract in W01ReferenceRoutes.All)
-            {
-                string path = BuildWorld1Scenes.GetScenePath(contract.Stage);
-                if (!File.Exists(path))
-                    throw new InvalidOperationException($"World 1 scene batch did not create: {path}");
-                if (!paths.Add(path))
-                    throw new InvalidOperationException($"World 1 scene batch produced a duplicate path: {path}");
+                AssertScene(BuildWorld1Scenes.GetScenePath(contract.Stage), paths, guids);
 
-                string guid = AssetDatabase.AssetPathToGUID(path);
-                if (string.IsNullOrWhiteSpace(guid))
-                    throw new InvalidOperationException($"World 1 scene is missing an AssetDatabase GUID: {path}");
-                if (!guids.Add(guid))
-                    throw new InvalidOperationException($"World 1 scene batch produced a duplicate GUID: {guid} ({path})");
-            }
-
-            if (paths.Count != W01ReferenceRoutes.All.Count || guids.Count != W01ReferenceRoutes.All.Count)
+            int expected = W01ReferenceRoutes.All.Count + 1;
+            if (paths.Count != expected || guids.Count != expected)
             {
                 throw new InvalidOperationException(
-                    $"World 1 scene batch count mismatch: paths={paths.Count}, guids={guids.Count}, contracts={W01ReferenceRoutes.All.Count}");
+                    $"World 1 scene batch count mismatch: paths={paths.Count}, guids={guids.Count}, expected={expected}");
             }
 
             RecordDiagnostic($"World 1 scene batch verified: scenes={paths.Count}, uniqueGuids={guids.Count}");
+        }
+
+        private static void AssertScene(string path, HashSet<string> paths, HashSet<string> guids)
+        {
+            if (!File.Exists(path))
+                throw new InvalidOperationException($"World 1 scene batch did not create: {path}");
+            if (!paths.Add(path))
+                throw new InvalidOperationException($"World 1 scene batch produced a duplicate path: {path}");
+
+            string guid = AssetDatabase.AssetPathToGUID(path);
+            if (string.IsNullOrWhiteSpace(guid))
+                throw new InvalidOperationException($"World 1 scene is missing an AssetDatabase GUID: {path}");
+            if (!guids.Add(guid))
+                throw new InvalidOperationException($"World 1 scene batch produced a duplicate GUID: {guid} ({path})");
         }
 
         private static void EnsureUrpPipeline()
@@ -177,8 +176,6 @@ namespace Spinbound.EditorTools.CI
             Directory.CreateDirectory(GeneratedRenderingFolder);
             AssetDatabase.Refresh();
 
-            // Build a deterministic URP configuration explicitly so CI cannot silently fall
-            // back to the Built-in Render Pipeline even when rendering assets are regenerated.
             DeleteAssetIfPresent(PipelineAssetPath);
             DeleteAssetIfPresent(RendererAssetPath);
             DeleteAssetIfPresent(UrpBuiltinRendererTempPath);
@@ -246,14 +243,9 @@ namespace Spinbound.EditorTools.CI
             {
                 Shader shader = Shader.Find(shaderName);
                 if (shader == null)
-                {
                     throw new InvalidOperationException($"SPINBOUND CI required shader was not found: {shaderName}");
-                }
-
                 if (!shader.isSupported)
-                {
                     throw new InvalidOperationException($"SPINBOUND CI required shader is unsupported for this build: {shaderName}");
-                }
             }
         }
 
@@ -273,12 +265,8 @@ namespace Spinbound.EditorTools.CI
             {
                 foreach (BuildStepMessage message in step.messages)
                 {
-                    if (message.type == LogType.Error ||
-                        message.type == LogType.Exception ||
-                        message.type == LogType.Assert)
-                    {
+                    if (message.type == LogType.Error || message.type == LogType.Exception || message.type == LogType.Assert)
                         RecordDiagnostic($"BUILD MESSAGE step={step.name}, type={message.type}: {message.content}");
-                    }
                 }
             }
         }
@@ -289,14 +277,8 @@ namespace Spinbound.EditorTools.CI
             {
                 string fullPath = Path.GetFullPath(DiagnosticPath);
                 string directory = Path.GetDirectoryName(fullPath);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                File.AppendAllText(
-                    fullPath,
-                    $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
+                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+                File.AppendAllText(fullPath, $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
             }
             catch (Exception diagnosticException)
             {
@@ -306,13 +288,8 @@ namespace Spinbound.EditorTools.CI
 
         private static void DeleteAssetIfPresent(string path)
         {
-            if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) != null)
-            {
-                if (!AssetDatabase.DeleteAsset(path))
-                {
-                    throw new InvalidOperationException($"SPINBOUND CI could not delete stale generated asset: {path}");
-                }
-            }
+            if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) != null && !AssetDatabase.DeleteAsset(path))
+                throw new InvalidOperationException($"SPINBOUND CI could not delete stale generated asset: {path}");
         }
 
         private static bool HasFlag(string flag)
@@ -320,10 +297,7 @@ namespace Spinbound.EditorTools.CI
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length; i++)
             {
-                if (string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
+                if (string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase)) return true;
             }
             return false;
         }
@@ -333,10 +307,7 @@ namespace Spinbound.EditorTools.CI
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
             {
-                if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase))
-                {
-                    return args[i + 1];
-                }
+                if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase)) return args[i + 1];
             }
             return null;
         }
