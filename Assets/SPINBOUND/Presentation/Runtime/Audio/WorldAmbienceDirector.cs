@@ -45,9 +45,15 @@ namespace Spinbound.Presentation.Audio
             if (_paused == paused) return;
             _paused = paused;
             if (_ambience == null || _ambience.clip == null) return;
-            if (paused) _ambience.Pause();
-            else if (_ambience.isPlaying) _ambience.UnPause();
-            else _ambience.Play();
+            if (paused)
+            {
+                _ambience.Pause();
+            }
+            else
+            {
+                _ambience.UnPause();
+                if (!_ambience.isPlaying) _ambience.Play();
+            }
         }
 
         private void ApplyMix()
