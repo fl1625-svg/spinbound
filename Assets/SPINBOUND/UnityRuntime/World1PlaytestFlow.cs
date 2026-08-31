@@ -60,9 +60,10 @@ namespace Spinbound.UnityRuntime
 
         private void Update()
         {
-            if (_settingsOpen && Input.GetKeyDown(KeyCode.Escape))
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
-                CloseSettings();
+                if (_settingsOpen) CloseSettings();
+                else ToggleSettings();
                 return;
             }
 
@@ -191,7 +192,7 @@ namespace Spinbound.UnityRuntime
             CreateCornerButton(
                 canvasObject.transform,
                 "Settings Button",
-                "SETTINGS  [P]",
+                "SETTINGS  [P/ESC]",
                 new Vector2(-40f, -168f),
                 new Vector2(220f, 48f),
                 ToggleSettings);
