@@ -79,15 +79,9 @@ namespace Spinbound.UnityRuntime
 
         private void Update()
         {
-            var keyboard = Keyboard.current;
-
-            bool escapePressed =
-                (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) ||
-                Input.GetKeyDown(KeyCode.Escape);
-            if (escapePressed && !(_flow?.IsSettingsOpen ?? false))
-                SetPaused(!_paused);
             if (_paused || _completed) return;
 
+            var keyboard = Keyboard.current;
             var direction = NumericsVector2.Zero;
 
             bool left =
