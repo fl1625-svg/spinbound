@@ -31,6 +31,7 @@ namespace Spinbound.UnityRuntime
         private bool _paused;
         private bool _completed;
         private bool _gameplayReported;
+        private bool _flowEventsBound;
         private int _presentedHitCount;
 
         public void Configure(RotorPresenter presenter, AdventureHud hud = null, RotorFxDirector fx = null, World1PlaytestFlow flow = null)
@@ -64,22 +65,23 @@ namespace Spinbound.UnityRuntime
             _hud?.SetCourse(_stage.Id, _stage.DisplayName);
             _hud?.SetHearts(3);
             _hud?.SetTime(0f);
+            _hud?.SetOrbitCores(0, 3);
+            _hud?.SetSpeedTier(SpeedTier.Speed1);
             _presentedHitCount = _session.Hits;
         }
 
-        private void Start() => ReportGameplayStart();
+        private void Start()
+        {
+            BindFlowEvents();
+            ApplySettings(_flow != null ? _flow.Settings : AccessibilitySettings.Load());
+            ReportGameplayStart();
+        }
 
         private void Update()
         {
-            var keyboard = Keyboard.current;
-
-            bool escapePressed =
-                (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) ||
-                Input.GetKeyDown(KeyCode.Escape);
-            if (escapePressed)
-                SetPaused(!_paused);
             if (_paused || _completed) return;
 
+            var keyboard = Keyboard.current;
             var direction = NumericsVector2.Zero;
 
             bool left =
@@ -126,6 +128,7 @@ namespace Spinbound.UnityRuntime
             _fx?.SetSpeedTier(tier);
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
+            _hud?.SetSpeedTier(tier);
 
             if (HasReachedFinish())
                 CompleteStage();
@@ -149,11 +152,39 @@ namespace Spinbound.UnityRuntime
 
         private void OnDisable()
         {
+            UnbindFlowEvents();
             if (_gameplayReported)
             {
                 _platform?.GameplayStop();
                 _gameplayReported = false;
             }
+        }
+
+        private void BindFlowEvents()
+        {
+            if (_flow == null || _flowEventsBound) return;
+            _flow.ModalPauseChanged += OnModalPauseChanged;
+            _flow.SettingsChanged += ApplySettings;
+            _flowEventsBound = true;
+        }
+
+        private void UnbindFlowEvents()
+        {
+            if (_flow == null || !_flowEventsBound) return;
+            _flow.ModalPauseChanged -= OnModalPauseChanged;
+            _flow.SettingsChanged -= ApplySettings;
+            _flowEventsBound = false;
+        }
+
+        private void OnModalPauseChanged(bool paused)
+        {
+            SetPaused(paused);
+        }
+
+        private void ApplySettings(AccessibilitySettings settings)
+        {
+            if (settings == null) return;
+            _fx?.ApplyAccessibility(settings);
         }
 
         private void SetPaused(bool paused)

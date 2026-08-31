@@ -52,6 +52,8 @@ jobs:
         run: python3 tools/verify_reference_route.py
       - name: Verify vertical slice visual contract
         run: python3 tools/verify_vertical_slice_visual.py
+      - name: Verify UI settings contract
+        run: python3 tools/verify_ui_settings.py
 
   unity-tests:
     name: Unity EditMode tests

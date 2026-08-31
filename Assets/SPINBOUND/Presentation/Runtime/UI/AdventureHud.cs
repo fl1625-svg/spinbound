@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Spinbound.Core.Simulation;
 
 namespace Spinbound.Presentation.UI
 {
@@ -9,6 +10,8 @@ namespace Spinbound.Presentation.UI
         private Text _time;
         private Text _hearts;
         private Text _course;
+        private Text _cores;
+        private Text _speedDots;
 
         public Text Hearts => _hearts;
 
@@ -36,6 +39,25 @@ namespace Spinbound.Presentation.UI
             _hearts.text = hearts <= 0 ? "—" : new string('♥', hearts);
         }
 
+        public void SetOrbitCores(int collected, int total = 3)
+        {
+            if (_cores == null) return;
+            int safeTotal = Mathf.Max(0, total);
+            int safeCollected = Mathf.Clamp(collected, 0, safeTotal);
+            _cores.text = $"{safeCollected} / {safeTotal}";
+        }
+
+        public void SetSpeedTier(SpeedTier tier)
+        {
+            if (_speedDots == null) return;
+            _speedDots.text = tier switch
+            {
+                SpeedTier.Speed1 => "●  ○  ○",
+                SpeedTier.Speed2 => "●  ●  ○",
+                _ => "●  ●  ●",
+            };
+        }
+
         public static AdventureHud Build()
         {
             var root = new GameObject("Adventure HUD");
@@ -53,6 +75,10 @@ namespace Spinbound.Presentation.UI
             hud._course = CreateCourseCard(root.transform, out hud._worldBadge);
             hud._time = CreateTimeCard(root.transform);
             hud._hearts = CreateHeartsCard(root.transform);
+            hud._cores = CreateCoresCard(root.transform);
+            hud._speedDots = CreateSpeedCard(root.transform);
+            hud.SetOrbitCores(0, 3);
+            hud.SetSpeedTier(SpeedTier.Speed1);
             return hud;
         }
 
@@ -83,6 +109,24 @@ namespace Spinbound.Presentation.UI
             var value = CreateText(panel, "Heart Value", "♥♥♥", new Vector2(86, 7), new Vector2(88, 48), TextAnchor.MiddleRight, 25, FontStyle.Bold, new Color(1f, .52f, .64f, 1f));
             AddTextOutline(value, new Color(.20f, .01f, .04f, .42f), new Vector2(1, -1));
             return value;
+        }
+
+        private static Text CreateCoresCard(Transform parent)
+        {
+            var panel = CreateCard(parent, "Orbit Cores Card", new Vector2(-40, -108), new Vector2(192, 48), true, new Color(.025f, .055f, .080f, .62f), new Color(.92f, .75f, .28f, 1f));
+            var caption = CreateText(panel, "Cores Caption", "CORES", new Vector2(14, 5), new Vector2(76, 38), TextAnchor.MiddleLeft, 13, FontStyle.Bold, new Color(1f, .86f, .49f, 1f));
+            caption.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var value = CreateText(panel, "Cores Value", "0 / 3", new Vector2(88, 5), new Vector2(86, 38), TextAnchor.MiddleRight, 20, FontStyle.Bold, Color.white);
+            AddTextOutline(value, new Color(0f, 0f, 0f, .28f), new Vector2(1, -1));
+            return value;
+        }
+
+        private static Text CreateSpeedCard(Transform parent)
+        {
+            var panel = CreateCard(parent, "Speed Card", new Vector2(-40, -164), new Vector2(192, 42), true, new Color(.025f, .055f, .080f, .55f), new Color(.35f, .78f, 1f, 1f));
+            var caption = CreateText(panel, "Speed Caption", "SPEED", new Vector2(14, 4), new Vector2(62, 32), TextAnchor.MiddleLeft, 12, FontStyle.Bold, new Color(.63f, .83f, .98f, 1f));
+            caption.horizontalOverflow = HorizontalWrapMode.Overflow;
+            return CreateText(panel, "Speed Dots", "●  ○  ○", new Vector2(74, 4), new Vector2(100, 32), TextAnchor.MiddleRight, 16, FontStyle.Bold, Color.white);
         }
 
         private static RectTransform CreateCard(Transform parent, string name, Vector2 pos, Vector2 size, bool right, Color background, Color accent)
