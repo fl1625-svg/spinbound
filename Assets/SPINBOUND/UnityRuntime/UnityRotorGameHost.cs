@@ -65,6 +65,8 @@ namespace Spinbound.UnityRuntime
             _hud?.SetCourse(_stage.Id, _stage.DisplayName);
             _hud?.SetHearts(3);
             _hud?.SetTime(0f);
+            _hud?.SetOrbitCores(0, 3);
+            _hud?.SetSpeedTier(SpeedTier.Speed1);
             _presentedHitCount = _session.Hits;
         }
 
@@ -132,6 +134,7 @@ namespace Spinbound.UnityRuntime
             _fx?.SetSpeedTier(tier);
             _hud?.SetTime(_session.ElapsedSeconds);
             _hud?.SetHearts(Mathf.Max(0, 3 - _session.Hits));
+            _hud?.SetSpeedTier(tier);
 
             if (HasReachedFinish())
                 CompleteStage();
