@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Spinbound.Core.Simulation;
 using Spinbound.Presentation.UI;
 
 namespace Spinbound.Presentation.Audio
@@ -12,7 +13,8 @@ namespace Spinbound.Presentation.Audio
         private RotorAudioDirector _rotor;
         private DynamicMusicDirector _music;
         private WorldAmbienceDirector _ambience;
-        private AudioSource _oneShot;
+        private AudioSource _sfxOneShot;
+        private AudioSource _uiOneShot;
         private AccessibilitySettings _settings;
 
         private AudioClip _surfaceHit;
@@ -36,7 +38,8 @@ namespace Spinbound.Presentation.Audio
             director._rotor = RotorAudioDirector.Build(root.transform);
             director._music = DynamicMusicDirector.Build(root.transform);
             director._ambience = WorldAmbienceDirector.Build(root.transform);
-            director._oneShot = CreateOneShotSource(root.transform);
+            director._sfxOneShot = CreateOneShotSource(root.transform, "Gameplay SFX One Shots");
+            director._uiOneShot = CreateOneShotSource(root.transform, "UI One Shots");
             director.ApplySettings(AccessibilitySettings.Load());
             return director;
         }
@@ -65,8 +68,8 @@ namespace Spinbound.Presentation.Audio
             _rotor?.ApplySettings(_settings);
             _music?.ApplySettings(_settings);
             _ambience?.ApplySettings(_settings);
-            if (_oneShot != null)
-                _oneShot.volume = Mathf.Clamp01(_settings.SfxVolume);
+            if (_sfxOneShot != null) _sfxOneShot.volume = 1f;
+            if (_uiOneShot != null) _uiOneShot.volume = 1f;
         }
 
         public void Handle(GameplayAudioEvent audioEvent)
@@ -77,26 +80,26 @@ namespace Spinbound.Presentation.Audio
                     _rotor?.SetSpeedTier(audioEvent.SpeedTier);
                     _music?.SetIntensity(audioEvent.SpeedTier switch
                     {
-                        Core.Simulation.SpeedTier.Speed1 => .22f,
-                        Core.Simulation.SpeedTier.Speed2 => .58f,
+                        SpeedTier.Speed1 => .22f,
+                        SpeedTier.Speed2 => .58f,
                         _ => .86f,
                     });
                     break;
                 case GameplayAudioEventType.SurfaceHit:
-                    PlayOneShot(_surfaceHit, Mathf.Lerp(.65f, 1f, audioEvent.Severity));
+                    PlaySfx(_surfaceHit, Mathf.Lerp(.65f, 1f, audioEvent.Severity));
                     break;
                 case GameplayAudioEventType.RotationSpring:
-                    PlayOneShot(_spring, 1f);
+                    PlaySfx(_spring, 1f);
                     break;
                 case GameplayAudioEventType.HeartZone:
-                    PlayOneShot(_heart, .92f);
+                    PlaySfx(_heart, .92f);
                     break;
                 case GameplayAudioEventType.StageClear:
                     _music?.SetIntensity(1f);
-                    PlayOneShot(_clear, 1f);
+                    PlaySfx(_clear, 1f);
                     break;
                 case GameplayAudioEventType.StageFail:
-                    PlayOneShot(_fail, 1f);
+                    PlaySfx(_fail, 1f);
                     break;
                 case GameplayAudioEventType.UiConfirm:
                     PlayUi(_uiConfirm);
@@ -114,23 +117,23 @@ namespace Spinbound.Presentation.Audio
             _ambience?.SetPaused(paused);
         }
 
-        private void PlayOneShot(AudioClip clip, float scale)
+        private void PlaySfx(AudioClip clip, float scale)
         {
-            if (_oneShot == null || clip == null) return;
+            if (_sfxOneShot == null || clip == null) return;
             float volume = Mathf.Clamp01((_settings?.SfxVolume ?? 1f) * scale);
-            _oneShot.PlayOneShot(clip, volume);
+            _sfxOneShot.PlayOneShot(clip, volume);
         }
 
         private void PlayUi(AudioClip clip)
         {
-            if (_oneShot == null || clip == null) return;
+            if (_uiOneShot == null || clip == null) return;
             float volume = Mathf.Clamp01(_settings?.UiVolume ?? 1f);
-            _oneShot.PlayOneShot(clip, volume);
+            _uiOneShot.PlayOneShot(clip, volume);
         }
 
-        private static AudioSource CreateOneShotSource(Transform parent)
+        private static AudioSource CreateOneShotSource(Transform parent, string name)
         {
-            var go = new GameObject("Gameplay One Shots");
+            var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var source = go.AddComponent<AudioSource>();
             source.loop = false;
